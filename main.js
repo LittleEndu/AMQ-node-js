@@ -1,5 +1,6 @@
 const {app, BrowserWindow, Menu, MenuItem, dialog} = require('electron')
 const windowStateKeeper = require('electron-window-state');
+const versionCheck = require('github-version-checker');
 const open = require('open')
 const fs = require('fs');
 const util = require('util')
@@ -100,14 +101,16 @@ async function discordActivity() {
                 }
                 break;
             case "Lobby":
-                details = isSpectator ? "Waiting to Spectate" : "Waiting to Play" + gameMode === "Ranked" ? "Ranked" : ""
+                details = (isSpectator ? "Waiting to Spectate" : "Waiting to Play") + (gameMode === "Ranked" ? "Ranked" : "")
                 state = gameMode === "Ranked" ? "Ranked Lobby" : lobbyIsPrivate ? "Private Lobby" : "Public Lobby"
                 setPartyInfo()
-                let base64password = Buffer.from(lobbyPassword).toString('base64')
-                joinSecret = `${lobbyId}-${base64password}`
+                if (totalPlayers - currentPlayers > 0) {
+                    let base64password = Buffer.from(lobbyPassword).toString('base64')
+                    joinSecret = `${lobbyId}-${base64password}`
+                }
                 break;
             case "Quiz":
-                details = isSpectator ? "Spectating" : "Playing" + gameMode === "Ranked" ? "Ranked" : ""
+                details = (isSpectator ? "Spectating" : "Playing") + (gameMode === "Ranked" ? "Ranked" : "")
                 state = `${currentSongs}/${totalSongs} Songs`
                 setPartyInfo()
                 break;
@@ -138,6 +141,9 @@ async function discordActivity() {
 
 rpc.on('ready', () => {
     rpc.subscribe('ACTIVITY_JOIN', function (args) {
+        if (!currentView) {
+            return;
+        }
         let splitApart = args.secret.toString().split('-')
         let roomId = splitApart[0]
         let encodedPassword = splitApart[1]
@@ -166,6 +172,32 @@ async function discordGatherInfo() {
     if (rpc.user) {
         let _view = await getFromGame("viewChanger.currentView")
         if (_view) {
+            let getGameMode = async function () {
+                let _scoreType = await getFromGame("lobby.settings.scoreType")
+                let _showSelection = await getFromGame("lobby.settings.showSelection")
+
+                switch (_scoreType) {
+                    case 1:
+                        if (_showSelection === 1)
+                            gameMode = "Standard"
+                        break;
+                    case 2:
+                        if (_showSelection === 1)
+                            gameMode = "Quick Draw"
+                        break;
+                    case 3:
+                        switch (_showSelection) {
+                            case 1:
+                                gameMode = "Last Man Standing"
+                                break;
+                            case 2:
+                                gameMode = "Battle Royale"
+                                break;
+                        }
+                }
+            }
+
+
             // Todo: figure out this regex
             currentView = toTitleCase(_view.toString().replace(/([a-z])([A-Z])/g, '$1 $2'))
             avatarName = await getFromGame("storeWindow.activeAvatar.avatarName")
@@ -179,10 +211,9 @@ async function discordGatherInfo() {
                     typeName = await getFromGame("expandLibrary.selectedSong.typeName")
                     break;
                 case "quiz":
+                    await getGameMode()
                     currentSongs = await getFromGame("quiz.infoContainer.$currentSongCount.text()")
                     totalSongs = await getFromGame("quiz.infoContainer.$totalSongCount.text()")
-
-                    gameMode = await getFromGame("quiz.gameMode")
                     isSpectator = await getFromGame("quiz.isSpectator")
                     // if (gameMode === "Ranked") {
                     //     if (!currentPlayers) {
@@ -193,33 +224,14 @@ async function discordGatherInfo() {
                     // }
                     break;
                 case "lobby":
-                    let _scoreType = await getFromGame("lobby.settings.scoreType")
-                    let _showSelection = await getFromGame("lobby.settings.showSelection")
-                    switch (_scoreType) {
-                        case 1:
-                            if (_showSelection === 1)
-                                gameMode = "Standard"
-                            break;
-                        case 2:
-                            if (_showSelection === 1)
-                                gameMode = "Quick Draw"
-                            break;
-                        case 3:
-                            switch (_showSelection) {
-                                case 1:
-                                    gameMode = "Last Man Standing"
-                                    break;
-                                case 2:
-                                    gameMode = "Battle Royale"
-                                    break;
-                            }
-                    }
-                    totalPlayers = await getFromGame("lobby.settings.roomSize")
+                    await getGameMode()
+
                     lobbyIsPrivate = await getFromGame("lobby.settings.privateRoom")
-                    isSpectator = await getFromGame("lobby.isSpectator")
                     let _solo = await getFromGame("lobby.settings.gameMode")
                     if (_solo === "Solo")
                         lobbyIsPrivate = true
+
+                    isSpectator = await getFromGame("lobby.isSpectator")
                     lobbyPassword = await getFromGame("lobby.settings.password") || ''
                     currentPlayers = await getFromGame("Object.keys(lobby.players).length")
                     totalPlayers = await getFromGame("lobby.settings.roomSize")
@@ -232,6 +244,8 @@ async function discordGatherInfo() {
                     }
                     break;
             }
+        } else {
+            currentView = null;
         }
 
         await discordActivity().catch(console.log);
@@ -342,7 +356,31 @@ function startup() {
 
     win.setMenu(menu)
     win.setMenuBarVisibility(false)
-    win.loadURL("https://animemusicquiz.com/").catch(console.log)
+    win.loadURL("https://animemusicquiz.com/").then(() => {
+        versionCheck({
+            repo: 'amq-node-js',
+            owner: 'LittleEndu',
+            currentVersion: app.getVersion()
+        }, null).then(function (update) {
+            if (update) {
+                console.log(`An update is available! ${update.name}`);
+                console.log(`You are on version ${app.getVersion()}!`);
+                const response = dialog.showMessageBoxSync(win, {
+                    type: 'question',
+                    buttons: ['Open github.com to update', 'Stay on this version'],
+                    title: "Found an update!",
+                    message: `An update is available! ${update.name}\nYou are on version ${app.getVersion()}!`,
+                    defaultId: 1,
+                    cancelId: 1
+                });
+                if (response === 0) {
+                    open(update.url)
+                }
+            } else {
+                console.log("You are up to date.");
+            }
+        })
+    }).catch(console.log)
 
 
     // region Events

@@ -1,6 +1,6 @@
 {
   "name": "amq-node-js",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Local client for Anime Music Quiz that supports Discord rich presence",
   "main": "main.js",
   "scripts": {
@@ -21,12 +21,13 @@
   "author": "LittleEndu",
   "license": "MIT",
   "devDependencies": {
-    "electron-builder": "^22.9.1",
-    "electron": "^11.1.0"
+    "electron": "^11.1.0",
+    "electron-builder": "^22.9.1"
   },
   "dependencies": {
     "discord-rpc": "^3.1.4",
     "electron-window-state": "^5.0.3",
+    "github-version-checker": "^2.2.0",
     "open": "^7.3.0"
   },
   "build": {
