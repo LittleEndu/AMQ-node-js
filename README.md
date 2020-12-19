@@ -8,7 +8,7 @@ AMQ vise, it doesn't give you any advantages. No new functionality nor new featu
 If your are instead concerned about this client being a virus, know that it isn't.
 
 ## Download
-There's no download link at the moment
+Grab the latest release [from here](https://github.com/LittleEndu/AMQ-node-js/releases)
 
 ## Build insturctions
 I just ran ``electron-builder`` so YMMV
