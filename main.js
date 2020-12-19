@@ -90,14 +90,17 @@ async function discordActivity() {
             default:
                 details = `In ${currentView}`
                 break;
+            case "Room Browser":
+                details = "Browsing rooms"
+                break;
             case "Expand Library":
-                details = "In Expand Library"
+                details = "Expanding Library"
                 if (songName) {
                     state = `Checking out '${songName}' by '${artistName}' from '${animeName}' [${typeName}]`
                 }
                 break;
             case "Lobby":
-                details = "Waiting"
+                details = isSpectator ? "Waiting to Spectate" : "Waiting to Play" + gameMode === "Ranked" ? "Ranked" : ""
                 state = gameMode === "Ranked" ? "Ranked Lobby" : lobbyIsPrivate ? "Private Lobby" : "Public Lobby"
                 setPartyInfo()
                 let base64password = Buffer.from(lobbyPassword).toString('base64')
@@ -213,6 +216,7 @@ async function discordGatherInfo() {
                     }
                     totalPlayers = await getFromGame("lobby.settings.roomSize")
                     lobbyIsPrivate = await getFromGame("lobby.settings.privateRoom")
+                    isSpectator = await getFromGame("lobby.isSpectator")
                     let _solo = await getFromGame("lobby.settings.gameMode")
                     if (_solo === "Solo")
                         lobbyIsPrivate = true

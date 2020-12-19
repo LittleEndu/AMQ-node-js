@@ -1,6 +1,7 @@
 {
   "name": "amq-node-js",
   "version": "2.0.0",
+  "description": "Local client for Anime Music Quiz that supports Discord rich presence",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -20,25 +21,21 @@
   "author": "LittleEndu",
   "license": "MIT",
   "devDependencies": {
+    "electron-builder": "^22.9.1",
     "electron": "^11.1.0"
   },
   "dependencies": {
     "discord-rpc": "^3.1.4",
-    "electron": "^11.1.0",
     "electron-window-state": "^5.0.3",
     "open": "^7.3.0"
   },
   "build": {
     "appId": "com.electron.amq.client",
-    "productName": "AMQ local client",
-    "copyright": "Copyright © 2019 LittleEndu",
+    "productName": "AMQ node.js",
+    "copyright": "Copyright © 2020 LittleEndu",
     "win": {
       "target": "portable",
-      "icon": "favicon.ico",
-      "extraFiles": [
-        "AnimeMusicQuiz.dll",
-        "discord_game_sdk.dll"
-      ]
+      "icon": "favicon.ico"
     }
   }
 }
