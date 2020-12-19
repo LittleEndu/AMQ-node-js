@@ -363,13 +363,14 @@ function startup() {
             currentVersion: app.getVersion()
         }, null).then(function (update) {
             if (update) {
-                console.log(`An update is available! ${update.name}`);
+                console.log(`An update is available!`);
                 console.log(`You are on version ${app.getVersion()}!`);
+                console.log(`Latest version is ${update.tag.name}`)
                 const response = dialog.showMessageBoxSync(win, {
                     type: 'question',
                     buttons: ['Open github.com to update', 'Stay on this version'],
                     title: "Found an update!",
-                    message: `An update is available! ${update.name}\nYou are on version ${app.getVersion()}!`,
+                    message: `An update is available!\nYou are on version ${app.getVersion()}\nLatest version is ${update.tag.name}`,
                     defaultId: 1,
                     cancelId: 1
                 });
