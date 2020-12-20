@@ -51,7 +51,7 @@ const rpc = new discordRPC.Client({transport: 'ipc'})
 // https://discord.com/developers/applications/635944292275453973/rich-presence/assets
 
 let currentView, gameMode, currentSongs, totalSongs, currentPlayers, totalPlayers, lobbyIsPrivate, isSpectator,
-    songName, animeName, artistName, typeName, lobbyId, lobbyPassword, avatarName, outfitName, optionName;
+    songName, animeName, artistName, typeName, lobbyId, lobbyPassword, avatarName, outfitName, optionActive;
 
 let gameModeKey = {
     "Standard": "standard",
@@ -82,7 +82,7 @@ async function discordActivity() {
 
     if (currentView) {
         if (avatarName) {
-            largeImageKey = `${avatarName}_${outfitName}_${optionName}`
+            largeImageKey = `${avatarName}_${outfitName}_${optionActive ? 'y' : 'n'}`
                 .replace(' ', '_')
                 .toLowerCase()
             largeImageText = avatarName
@@ -215,7 +215,7 @@ async function discordGatherInfo() {
             currentView = toTitleCase(_view.toString().replace(/([a-z])([A-Z])/g, '$1 $2'))
             avatarName = await getFromGame("storeWindow.activeAvatar.avatarName")
             outfitName = await getFromGame("storeWindow.activeAvatar.outfitName")
-            optionName = await getFromGame("storeWindow.activeAvatar.optionName")
+            optionActive = await getFromGame("storeWindow.activeAvatar.optionActive")
             switch (_view) {
                 case "expandLibrary":
                     songName = await getFromGame("expandLibrary.selectedSong.name")
@@ -245,7 +245,7 @@ async function discordGatherInfo() {
         await discordActivity().catch(console.log);
 
     } else {
-        rpc.login({clientId}).catch(console.log);
+        rpc.login({clientId}).catch();
     }
 }
 
