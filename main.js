@@ -106,7 +106,7 @@ async function discordActivity() {
                 setPartyInfo()
                 if (totalPlayers - currentPlayers > 0) {
                     let base64password = Buffer.from(lobbyPassword).toString('base64')
-                    joinSecret = `${lobbyId}-${base64password}`
+                    joinSecret = `${lobbyId}.${base64password}`
                 }
                 break;
             case "Quiz":
@@ -144,7 +144,7 @@ rpc.on('ready', () => {
         if (!currentView) {
             return;
         }
-        let splitApart = args.secret.toString().split('-')
+        let splitApart = args.secret.toString().split('.')
         let roomId = splitApart[0]
         if (roomId === '-1')
             roomId = null;
