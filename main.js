@@ -146,6 +146,8 @@ rpc.on('ready', () => {
         }
         let splitApart = args.secret.toString().split('-')
         let roomId = splitApart[0]
+        if (roomId === '-1')
+            roomId = null;
         let encodedPassword = splitApart[1]
         getFromGame(
             `let decodedPassword = atob("${encodedPassword}"); roomBrowser.fireJoinLobby(${roomId}, decodedPassword)`
@@ -197,6 +199,17 @@ async function discordGatherInfo() {
                 }
             }
 
+            let getLobbySettings = async function (){
+                lobbyIsPrivate = await getFromGame("lobby.settings.privateRoom")
+                let _solo = await getFromGame("lobby.settings.gameMode")
+                if (_solo === "Solo")
+                    lobbyIsPrivate = true
+
+                totalPlayers = await getFromGame("lobby.settings.roomSize") || currentPlayers + 1
+                lobbyId = await getFromGame("lobby.gameId") || -1
+                lobbyPassword = await getFromGame("lobby.settings.password") || ''
+            }
+
 
             // Todo: figure out this regex
             currentView = toTitleCase(_view.toString().replace(/([a-z])([A-Z])/g, '$1 $2'))
@@ -215,33 +228,14 @@ async function discordGatherInfo() {
                     currentSongs = await getFromGame("quiz.infoContainer.$currentSongCount.text()")
                     totalSongs = await getFromGame("quiz.infoContainer.$totalSongCount.text()")
                     isSpectator = await getFromGame("quiz.isSpectator")
-                    // if (gameMode === "Ranked") {
-                    //     if (!currentPlayers) {
-                    //         currentPlayers = await getFromGame("Object.keys(lobby.players).length")
-                    //     }
-                    //     totalPlayers = currentPlayers
-                    //     lobbyId = -1
-                    // }
+                    currentPlayers = await getFromGame("Object.keys(quiz.players).length")
+                    await getLobbySettings()
                     break;
                 case "lobby":
                     await getGameMode()
-
-                    lobbyIsPrivate = await getFromGame("lobby.settings.privateRoom")
-                    let _solo = await getFromGame("lobby.settings.gameMode")
-                    if (_solo === "Solo")
-                        lobbyIsPrivate = true
-
                     isSpectator = await getFromGame("lobby.isSpectator")
-                    lobbyPassword = await getFromGame("lobby.settings.password") || ''
                     currentPlayers = await getFromGame("Object.keys(lobby.players).length")
-                    totalPlayers = await getFromGame("lobby.settings.roomSize")
-                    let _gameId = await getFromGame("lobby.gameId")
-                    if (_gameId === null) {
-                        totalPlayers = currentPlayers + 1
-                        lobbyId = -1
-                    } else {
-                        lobbyId = _gameId
-                    }
+                    await getLobbySettings()
                     break;
             }
         } else {
@@ -273,8 +267,8 @@ function startup() {
         title: "AMQ",
         show: false,
         backgroundColor: "#424242",
-        enableRemoteModule: false,
         webPreferences: {
+            enableRemoteModule: false,
             contextIsolation: true
         }
     })
@@ -363,14 +357,13 @@ function startup() {
             currentVersion: app.getVersion()
         }, null).then(function (update) {
             if (update) {
-                console.log(`An update is available!`);
-                console.log(`You are on version ${app.getVersion()}!`);
-                console.log(`Latest version is ${update.tag.name}`)
+                let updateString = `An update is available!\nYou are on version ${app.getVersion()}\nLatest version is ${update.tag.name}`
+                console.log(updateString);
                 const response = dialog.showMessageBoxSync(win, {
                     type: 'question',
-                    buttons: ['Open github.com to update', 'Stay on this version'],
                     title: "Found an update!",
-                    message: `An update is available!\nYou are on version ${app.getVersion()}\nLatest version is ${update.tag.name}`,
+                    message: updateString,
+                    buttons: ['Open github.com to update', 'Stay on this version'],
                     defaultId: 1,
                     cancelId: 1
                 });
@@ -407,9 +400,9 @@ function startup() {
     win.webContents.on('will-prevent-unload', (event) => {
         const response = dialog.showMessageBoxSync(win, {
             type: 'question',
-            buttons: ['Leave', 'Stay'],
             title: 'Are you sure you want to leave?',
             message: "Leaving now might mean you can't come back.",
+            buttons: ['Leave', 'Stay'],
             defaultId: 0,
             cancelId: 1
         });
@@ -419,7 +412,7 @@ function startup() {
     })
 
     win.webContents.on('console-message', (event, level, message) => {
-        logToFile(message)
+        console.log(message)
     })
 
     win.webContents.session.on('will-download', (event, item) => {
