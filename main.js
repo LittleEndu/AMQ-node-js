@@ -4,6 +4,7 @@ const versionCheck = require('github-version-checker');
 const open = require('open')
 const fs = require('fs');
 const util = require('util')
+const crypto = require('crypto')
 const discordRPC = require('discord-rpc')
 
 //main electron window
@@ -75,7 +76,7 @@ async function discordActivity() {
         smallImageKey = gameModeKey[gameMode]
         smallImageText = gameMode
         instance = true
-        partyId = lobbyId.toString()
+        partyId = lobbyId.toString() + crypto.createHash('sha1').update(lobbyPassword).digest('base64')
         partySize = currentPlayers
         partyMax = totalPlayers
     }
