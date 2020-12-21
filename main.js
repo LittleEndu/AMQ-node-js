@@ -141,7 +141,7 @@ async function discordActivity() {
     });
 }
 
-async function getFromGame(toExecute) {
+async function requestFromGame(toExecute) {
     if (win && win.webContents) {
         try {
             return await win.webContents.executeJavaScript(
@@ -158,11 +158,11 @@ async function getFromGame(toExecute) {
 
 async function discordGatherInfo() {
     if (isRpcConnected) {
-        let _view = await getFromGame("viewChanger.currentView")
+        let _view = await requestFromGame("viewChanger.currentView")
         if (_view) {
             let getGameMode = async function () {
-                let _scoreType = await getFromGame("lobby.settings.scoreType")
-                let _showSelection = await getFromGame("lobby.settings.showSelection")
+                let _scoreType = await requestFromGame("lobby.settings.scoreType")
+                let _showSelection = await requestFromGame("lobby.settings.showSelection")
 
                 switch (_scoreType) {
                     case 1:
@@ -186,40 +186,40 @@ async function discordGatherInfo() {
             }
 
             let getLobbySettings = async function () {
-                lobbyIsPrivate = await getFromGame("lobby.settings.privateRoom")
-                let _solo = await getFromGame("lobby.settings.gameMode")
+                lobbyIsPrivate = await requestFromGame("lobby.settings.privateRoom")
+                let _solo = await requestFromGame("lobby.settings.gameMode")
                 if (_solo === "Solo")
                     lobbyIsPrivate = true
 
-                totalPlayers = await getFromGame("lobby.settings.roomSize") || currentPlayers + 1
-                lobbyId = await getFromGame("lobby.gameId") || -1
-                lobbyPassword = await getFromGame("lobby.settings.password") || ''
+                totalPlayers = await requestFromGame("lobby.settings.roomSize") || currentPlayers + 1
+                lobbyId = await requestFromGame("lobby.gameId") || -1
+                lobbyPassword = await requestFromGame("lobby.settings.password") || ''
             }
 
 
             // Todo: figure out this regex
             currentView = toTitleCase(_view.toString().replace(/([a-z])([A-Z])/g, '$1 $2'))
-            avatarName = await getFromGame("storeWindow.activeAvatar.avatarName")
-            outfitName = await getFromGame("storeWindow.activeAvatar.outfitName")
+            avatarName = await requestFromGame("storeWindow.activeAvatar.avatarName")
+            outfitName = await requestFromGame("storeWindow.activeAvatar.outfitName")
             switch (_view) {
                 case "expandLibrary":
-                    songName = await getFromGame("expandLibrary.selectedSong.name")
-                    artistName = await getFromGame("expandLibrary.selectedSong.artist")
-                    animeName = await getFromGame("expandLibrary.selectedSong.animeName")
-                    typeName = await getFromGame("expandLibrary.selectedSong.typeName")
+                    songName = await requestFromGame("expandLibrary.selectedSong.name")
+                    artistName = await requestFromGame("expandLibrary.selectedSong.artist")
+                    animeName = await requestFromGame("expandLibrary.selectedSong.animeName")
+                    typeName = await requestFromGame("expandLibrary.selectedSong.typeName")
                     break;
                 case "quiz":
                     await getGameMode()
-                    currentSongs = await getFromGame("quiz.infoContainer.$currentSongCount.text()")
-                    totalSongs = await getFromGame("quiz.infoContainer.$totalSongCount.text()")
-                    isSpectator = await getFromGame("quiz.isSpectator")
-                    currentPlayers = await getFromGame("Object.keys(quiz.players).length")
+                    currentSongs = await requestFromGame("quiz.infoContainer.$currentSongCount.text()")
+                    totalSongs = await requestFromGame("quiz.infoContainer.$totalSongCount.text()")
+                    isSpectator = await requestFromGame("quiz.isSpectator")
+                    currentPlayers = await requestFromGame("Object.keys(quiz.players).length")
                     await getLobbySettings()
                     break;
                 case "lobby":
                     await getGameMode()
-                    isSpectator = await getFromGame("lobby.isSpectator")
-                    currentPlayers = await getFromGame("Object.keys(lobby.players).length")
+                    isSpectator = await requestFromGame("lobby.isSpectator")
+                    currentPlayers = await requestFromGame("Object.keys(lobby.players).length")
                     await getLobbySettings()
                     break;
             }
@@ -245,7 +245,7 @@ rpc.on('ready', () => {
         if (roomId === '-1')
             roomId = null;
         let encodedPassword = splitApart[1]
-        getFromGame(
+        requestFromGame(
             `let decodedPassword = atob("${encodedPassword}"); roomBrowser.fireJoinLobby(${roomId}, decodedPassword)`
         ).catch(console.log)
     }).catch(console.log)
