@@ -47,6 +47,8 @@ console.log = function (d) { //
 
 const clientId = '635944292275453973';
 discordRPC.register(clientId);
+let isRpcConnected = false;
+let activityJoinRequestUnsubscriber = null;
 const rpc = new discordRPC.Client({transport: 'ipc'})
 // https://discord.com/developers/applications/635944292275453973/rich-presence/assets
 
@@ -139,22 +141,6 @@ async function discordActivity() {
     });
 }
 
-rpc.on('ready', () => {
-    rpc.subscribe('ACTIVITY_JOIN', function (args) {
-        if (!currentView) {
-            return;
-        }
-        let splitApart = args.secret.toString().split('.')
-        let roomId = splitApart[0]
-        if (roomId === '-1')
-            roomId = null;
-        let encodedPassword = splitApart[1]
-        getFromGame(
-            `let decodedPassword = atob("${encodedPassword}"); roomBrowser.fireJoinLobby(${roomId}, decodedPassword)`
-        ).catch(console.log)
-    }).catch(console.log)
-});
-
 async function getFromGame(toExecute) {
     if (win && win.webContents) {
         try {
@@ -171,7 +157,7 @@ async function getFromGame(toExecute) {
 }
 
 async function discordGatherInfo() {
-    if (rpc.user) {
+    if (isRpcConnected) {
         let _view = await getFromGame("viewChanger.currentView")
         if (_view) {
             let getGameMode = async function () {
@@ -199,7 +185,7 @@ async function discordGatherInfo() {
                 }
             }
 
-            let getLobbySettings = async function (){
+            let getLobbySettings = async function () {
                 lobbyIsPrivate = await getFromGame("lobby.settings.privateRoom")
                 let _solo = await getFromGame("lobby.settings.gameMode")
                 if (_solo === "Solo")
@@ -244,11 +230,37 @@ async function discordGatherInfo() {
         await discordActivity().catch(console.log);
 
     } else {
-        rpc.login({clientId}).catch();
+        rpc.login({clientId}).catch(); // this is safe to be called more than once
     }
 }
 
-setInterval(discordGatherInfo, 1_000);
+rpc.on('ready', () => {
+    console.log(rpc.user)
+    rpc.subscribe('ACTIVITY_JOIN', function (args) {
+        if (!currentView) {
+            return; // TODO: this should save the secret until we are logged into AMQ
+        }
+        let splitApart = args.secret.toString().split('.')
+        let roomId = splitApart[0]
+        if (roomId === '-1')
+            roomId = null;
+        let encodedPassword = splitApart[1]
+        getFromGame(
+            `let decodedPassword = atob("${encodedPassword}"); roomBrowser.fireJoinLobby(${roomId}, decodedPassword)`
+        ).catch(console.log)
+    }).catch(console.log)
+});
+
+rpc.on('connected', () => {
+    console.log("Connected to discord")
+    isRpcConnected = true;
+})
+
+rpc.on('disconnected', () => {
+    console.log("Disconnected from discord")
+    isRpcConnected = false;
+})
+
 
 //set up for AMQ and other ux
 function startup() {
@@ -373,6 +385,7 @@ function startup() {
                 console.log("You are up to date.");
             }
         })
+        setInterval(discordGatherInfo, 1_000);
     }).catch(console.log)
 
 
