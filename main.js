@@ -48,7 +48,6 @@ console.log = function (d) { //
 const clientId = '635944292275453973';
 discordRPC.register(clientId);
 let isRpcConnected = false;
-let activityJoinRequestUnsubscriber = null;
 const rpc = new discordRPC.Client({transport: 'ipc'})
 // https://discord.com/developers/applications/635944292275453973/rich-presence/assets
 
@@ -81,6 +80,13 @@ async function discordActivity() {
         partyMax = totalPlayers
     }
 
+    let setupSecret = function () {
+        if (totalPlayers - currentPlayers > 0) {
+            let base64password = Buffer.from(lobbyPassword).toString('base64')
+            joinSecret = `${lobbyId}.${base64password}`
+        }
+    }
+
 
     if (currentView) {
         if (avatarName) {
@@ -106,10 +112,7 @@ async function discordActivity() {
                 details = (isSpectator ? "Waiting to Spectate" : "Waiting to Play") + (gameMode === "Ranked" ? "Ranked" : "")
                 state = gameMode === "Ranked" ? "Ranked Lobby" : lobbyIsPrivate ? "Private Lobby" : "Public Lobby"
                 setPartyInfo()
-                if (totalPlayers - currentPlayers > 0) {
-                    let base64password = Buffer.from(lobbyPassword).toString('base64')
-                    joinSecret = `${lobbyId}.${base64password}`
-                }
+                setupSecret()
                 break;
             case "Quiz":
                 details = (isSpectator ? "Spectating" : "Playing") + (gameMode === "Ranked" ? "Ranked" : "")
@@ -236,6 +239,7 @@ async function discordGatherInfo() {
 
 rpc.on('ready', () => {
     console.log(rpc.user)
+
     rpc.subscribe('ACTIVITY_JOIN', function (args) {
         if (!currentView) {
             return; // TODO: this should save the secret until we are logged into AMQ
@@ -248,6 +252,12 @@ rpc.on('ready', () => {
         requestFromGame(
             `let decodedPassword = atob("${encodedPassword}"); roomBrowser.fireJoinLobby(${roomId}, decodedPassword)`
         ).catch(console.log)
+    }).catch(console.log)
+
+    rpc.subscribe('ACTIVITY_JOIN_REQUEST', (args) => {
+        if (!lobbyIsPrivate) {
+            rpc.sendJoinInvite(args['user']['id']).catch(console.log)
+        }
     }).catch(console.log)
 });
 
