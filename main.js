@@ -9,7 +9,6 @@ const discordRPC = require('discord-rpc')
 
 //main electron window
 let win;
-const startTimestamp = Date.now();
 const versionText = `AMQ node.js by LittleEndu - ver:${app.getVersion()}`
 
 
@@ -28,7 +27,7 @@ if (!fs.existsSync(app.getPath('userData'))) {
 if (!fs.existsSync(app.getPath('userData') + '/logs')) {
     fs.mkdirSync(app.getPath('userData') + '/logs');
 }
-const logFile = app.getPath('userData') + '/logs/' + startTimestamp + '.log'
+const logFile = app.getPath('userData') + '/logs/' + Date.now() + '.log'
 fs.writeFileSync(logFile, "Anime Music Quiz - local client log file\n")
 
 // TODO: remove if too much storage space is used, like ~50MB max
@@ -53,7 +52,7 @@ const rpc = new discordRPC.Client({transport: 'ipc'})
 // https://discord.com/developers/applications/635944292275453973/rich-presence/assets
 
 let currentView, gameMode, currentSongs, totalSongs, currentPlayers, totalPlayers, lobbyIsPrivate, isSpectator,
-    songName, animeName, artistName, typeName, lobbyId, lobbyPassword, avatarName, outfitName;
+    songName, animeName, artistName, typeName, lobbyId, lobbyPassword, avatarName, outfitName, startTimestamp;
 
 let gameModeKey = {
     "Standard": "standard",
@@ -69,6 +68,10 @@ async function discordActivity() {
     let largeImageKey = "logo"
     let largeImageText = versionText
     let instance = false;
+
+    if (startTimestamp && currentView !== "Quiz"){
+        startTimestamp = null
+    }
 
     let state, smallImageKey, smallImageText, partyId, partySize, partyMax, joinSecret;
 
@@ -116,6 +119,9 @@ async function discordActivity() {
                 setupSecret()
                 break;
             case "Quiz":
+                if (!startTimestamp){
+                    startTimestamp = Date.now()
+                }
                 details = (isSpectator ? "Spectating" : "Playing") + (gameMode === "Ranked" ? "Ranked" : "")
                 state = `\uD83C\uDFBC ${currentSongs}/${totalSongs} \uD83D\uDC65`
                 setPartyInfo()
