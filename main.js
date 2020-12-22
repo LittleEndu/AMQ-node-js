@@ -117,7 +117,7 @@ async function discordActivity() {
                 break;
             case "Quiz":
                 details = (isSpectator ? "Spectating" : "Playing") + (gameMode === "Ranked" ? "Ranked" : "")
-                state = `${currentSongs}/${totalSongs} Songs`
+                state = `\uD83C\uDFBC ${currentSongs}/${totalSongs} \uD83D\uDC65`
                 setPartyInfo()
                 break;
         }
