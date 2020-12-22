@@ -69,7 +69,7 @@ async function discordActivity() {
     let largeImageText = versionText
     let instance = false;
 
-    if (startTimestamp && currentView !== "Quiz"){
+    if (startTimestamp && currentView !== "Quiz") {
         startTimestamp = null
     }
 
@@ -113,16 +113,16 @@ async function discordActivity() {
                 }
                 break;
             case "Lobby":
-                details = (isSpectator ? "Waiting to Spectate" : "Waiting to Play") + (gameMode === "Ranked" ? "Ranked" : "")
+                details = (isSpectator ? "Waiting to Spectate" : "Waiting to Play") + (gameMode === "Ranked" ? " Ranked" : "")
                 state = gameMode === "Ranked" ? "Ranked Lobby" : lobbyIsPrivate ? "Private Lobby" : "Public Lobby"
                 setPartyInfo()
                 setupSecret()
                 break;
             case "Quiz":
-                if (!startTimestamp){
+                if (!startTimestamp) {
                     startTimestamp = Date.now()
                 }
-                details = (isSpectator ? "Spectating" : "Playing") + (gameMode === "Ranked" ? "Ranked" : "")
+                details = (isSpectator ? "Spectating" : "Playing") + (gameMode === "Ranked" ? " Ranked" : "")
                 state = `\uD83C\uDFBC ${currentSongs}/${totalSongs} \uD83D\uDC65`
                 setPartyInfo()
                 break;
@@ -132,7 +132,6 @@ async function discordActivity() {
         smallImageKey = "logo"
         smallImageText = versionText
     }
-
 
     // noinspection JSUnusedAssignment
     await rpc.setActivity({
@@ -173,6 +172,14 @@ async function discordGatherInfo() {
             let getGameMode = async function () {
                 let _scoreType = await requestFromGame("lobby.settings.scoreType")
                 let _showSelection = await requestFromGame("lobby.settings.showSelection")
+                if (await requestFromGame("lobby.settings.gameMode") === "Ranked") {
+                    gameMode = "Ranked"
+                    return;
+                }
+                if (await requestFromGame("quiz.gameMode") === "Ranked") {
+                    gameMode = "Ranked"
+                    return;
+                }
 
                 switch (_scoreType) {
                     case 1:
@@ -201,7 +208,9 @@ async function discordGatherInfo() {
                 if (_solo === "Solo")
                     lobbyIsPrivate = true
 
-                totalPlayers = await requestFromGame("lobby.settings.roomSize") || currentPlayers + 1
+                totalPlayers = await requestFromGame("lobby.settings.roomSize")
+                if (gameMode === "Ranked")
+                    totalPlayers = currentPlayers + 100 // game reports room size of 8
                 lobbyId = await requestFromGame("lobby.gameId") || -1
                 lobbyPassword = await requestFromGame("lobby.settings.password") || ''
             }
@@ -240,7 +249,9 @@ async function discordGatherInfo() {
         await discordActivity().catch(console.log);
 
     } else {
-        rpc.login({clientId}).catch(); // this is safe to be called more than once
+        try {
+            await rpc.login({clientId}); // this is safe to be called more than once
+        } catch {}
     }
 }
 
