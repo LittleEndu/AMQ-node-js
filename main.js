@@ -3,6 +3,7 @@ const windowStateKeeper = require('electron-window-state');
 const versionCheck = require('github-version-checker');
 const open = require('open')
 const fs = require('fs');
+const folderSize = require('get-folder-size');
 const util = require('util')
 const crypto = require('crypto')
 const discordRPC = require('discord-rpc')
@@ -24,13 +25,18 @@ function toTitleCase(str) {
 if (!fs.existsSync(app.getPath('userData'))) {
     fs.mkdirSync(app.getPath('userData'));
 }
-if (!fs.existsSync(app.getPath('userData') + '/logs')) {
-    fs.mkdirSync(app.getPath('userData') + '/logs');
+const logFolder = app.getPath('userData') + '/logs'
+if (!fs.existsSync(logFolder)) {
+    fs.mkdirSync(logFolder);
 }
 const logFile = app.getPath('userData') + '/logs/' + Date.now() + '.log'
-fs.writeFileSync(logFile, "Anime Music Quiz - local client log file\n")
+fs.writeFileSync(logFile, "AMQ node.js log file\n")
 
-// TODO: remove if too much storage space is used, like ~50MB max
+while (folderSize(logFolder) > 2**20*50){
+    let files = fs.readdirSync(logFolder)
+    fs.unlinkSync(logFolder + files[0])
+}
+
 
 function logToFile(args) {
     fs.appendFile(logFile, args + "\n", function (err) {
