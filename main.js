@@ -224,6 +224,8 @@ async function discordGatherInfo() {
                 totalPlayers = await requestFromGame("lobby.settings.roomSize")
                 if (gameMode === "Ranked")
                     totalPlayers = currentPlayers + 100 // game reports room size of 8
+                if (!totalPlayers)
+                    totalPlayers = currentPlayers
                 lobbyId = await requestFromGame("lobby.gameId") || -1
                 lobbyPassword = await requestFromGame("lobby.settings.password") || ''
             }
