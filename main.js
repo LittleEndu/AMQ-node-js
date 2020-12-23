@@ -182,6 +182,7 @@ async function discordGatherInfo() {
         let _view = await requestFromGame("viewChanger.currentView")
         if (_view) {
             let getGameMode = async function () {
+                gameMode = null;
                 let _scoreType = await requestFromGame("lobby.settings.scoreType")
                 let _showSelection = await requestFromGame("lobby.settings.showSelection")
                 if (await requestFromGame("lobby.settings.gameMode") === "Ranked") {
