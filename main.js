@@ -32,7 +32,13 @@ if (!fs.existsSync(logFolder)) {
 const logFile = app.getPath('userData') + '/logs/' + Date.now() + '.log'
 fs.writeFileSync(logFile, "AMQ node.js log file\n")
 
-while (folderSize(logFolder) > 2**20*50){
+while (
+    folderSize(logFolder, (err, size) => {
+        if (err)
+            return false
+        return size > 2 ** 20 * 50
+    })
+    ) {
     let files = fs.readdirSync(logFolder)
     fs.unlinkSync(logFolder + files[0])
 }
@@ -257,7 +263,8 @@ async function discordGatherInfo() {
     } else {
         try {
             await rpc.login({clientId}); // this is safe to be called more than once
-        } catch {}
+        } catch {
+        }
     }
 }
 
