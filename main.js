@@ -464,8 +464,10 @@ function startup() {
         }
     })
 
-    win.webContents.on('console-message', (event, level, message) => {
+    win.webContents.on('console-message', (event, level, message, line, sourceId) => {
         console.log(message)
+        if (line && sourceId)
+            console.log(`at line ${line} in ${sourceId}`)
     })
 
     win.webContents.session.on('will-download', (event, item) => {
