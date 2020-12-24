@@ -15,7 +15,7 @@ const versionText = `AMQ node.js by LittleEndu - ver:${app.getVersion()}`
 
 //util functions
 function toTitleCase(str) {
-    // Todo: figure out this regex
+    // /\w\S*/g matches any not empty word
     return str.replace(/\w\S*/g, function (txt) {
         return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
     });
@@ -66,15 +66,6 @@ const rpc = new discordRPC.Client({transport: 'ipc'})
 let currentView, gameMode, currentSongs, totalSongs, currentPlayers, totalPlayers, lobbyIsPrivate, isSpectator,
     songName, animeName, artistName, typeName, lobbyId, lobbyPassword, avatarName, outfitName, startTimestamp;
 
-let gameModeKey = {
-    "Standard": "standard",
-    "Quick Draw": "quick_draw",
-    "Last Man Standing": "lastman",
-    "Battle Royale": "battle_royale",
-    "Ranked": "logo"
-};
-
-
 async function discordActivity() {
     let details = "Not logged in";
     let largeImageKey = "logo"
@@ -88,8 +79,6 @@ async function discordActivity() {
     let state, smallImageKey, smallImageText, partyId, partySize, partyMax, joinSecret;
 
     let setPartyInfo = function () {
-        smallImageKey = gameModeKey[gameMode]
-        smallImageText = gameMode
         instance = true
         partyId = lobbyId.toString() + crypto.createHash('sha1').update(lobbyPassword).digest('base64')
         partySize = currentPlayers
@@ -110,6 +99,8 @@ async function discordActivity() {
                 .replace(' ', '_')
                 .toLowerCase()
             largeImageText = avatarName
+            smallImageKey = "logo"
+            smallImageText = versionText
         }
         switch (currentView) {
             default:
@@ -125,7 +116,7 @@ async function discordActivity() {
                 }
                 break;
             case "Lobby":
-                details = (isSpectator ? "Waiting to Spectate" : "Waiting to Play") + (gameMode === "Ranked" ? " Ranked" : "")
+                details = (isSpectator ? "Waiting to Spectate " : "Waiting to Play ") + (gameMode || "")
                 state = gameMode === "Ranked" ? "Ranked Lobby" : lobbyIsPrivate ? "Private Lobby" : "Public Lobby"
                 setPartyInfo()
                 setupSecret()
@@ -134,15 +125,11 @@ async function discordActivity() {
                 if (!startTimestamp) {
                     startTimestamp = Date.now()
                 }
-                details = (isSpectator ? "Spectating" : "Playing") + (gameMode === "Ranked" ? " Ranked" : "")
+                details = (isSpectator ? "Spectating " : "Playing ") + (gameMode || "")
                 state = `\uD83C\uDFBC ${currentSongs}/${totalSongs} \uD83D\uDC65`
                 setPartyInfo()
                 break;
         }
-    }
-    if (largeImageKey !== "logo" && !smallImageKey) {
-        smallImageKey = "logo"
-        smallImageText = versionText
     }
 
     // noinspection JSUnusedAssignment
@@ -231,7 +218,7 @@ async function discordGatherInfo() {
             }
 
 
-            // Todo: figure out this regex
+            // /([a-z])([A-Z])/g matches camelCase word endings, $1 $2 adds a space between the result
             currentView = toTitleCase(_view.toString().replace(/([a-z])([A-Z])/g, '$1 $2'))
             avatarName = await requestFromGame("storeWindow.activeAvatar.avatarName")
             outfitName = await requestFromGame("storeWindow.activeAvatar.outfitName")
