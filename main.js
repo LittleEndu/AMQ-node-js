@@ -170,8 +170,6 @@ async function discordGatherInfo() {
         if (_view) {
             let getGameMode = async function () {
                 gameMode = null;
-                let _scoreType = await requestFromGame("lobby.settings.scoreType")
-                let _showSelection = await requestFromGame("lobby.settings.showSelection")
                 if (await requestFromGame("lobby.settings.gameMode") === "Ranked") {
                     gameMode = "Ranked"
                     return;
@@ -181,26 +179,25 @@ async function discordGatherInfo() {
                     return;
                 }
 
-                switch (_scoreType) {
-                    case 1:
-                        if (_showSelection === 1)
+                let _scoreType = await requestFromGame("lobby.settings.scoreType")
+                let _showSelection = await requestFromGame("lobby.settings.showSelection")
+                if (_showSelection === 2) {
+                    gameMode = "Battle Royale"
+                } else {
+                    switch (_scoreType) {
+                        case 1:
                             gameMode = "Standard"
-                        break;
-                    case 2:
-                        if (_showSelection === 1)
+                            break;
+                        case 2:
                             gameMode = "Quick Draw"
-                        break;
-                    case 3:
-                        switch (_showSelection) {
-                            case 1:
-                                gameMode = "Last Man Standing"
-                                break;
-                            case 2:
-                                gameMode = "Battle Royale"
-                                break;
-                        }
+                            break;
+                        case 3:
+                            gameMode = "Last Man Standing"
+                            break;
+                    }
                 }
             }
+
 
             let getLobbySettings = async function () {
                 lobbyIsPrivate = await requestFromGame("lobby.settings.privateRoom")
