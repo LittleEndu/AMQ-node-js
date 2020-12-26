@@ -80,6 +80,8 @@ async function discordActivity() {
 
     let setPartyInfo = function () {
         instance = true
+        if (totalPlayers === 1)
+            return
         partyId = lobbyId.toString() + crypto.createHash('sha1').update(lobbyPassword).digest('base64')
         partySize = currentPlayers
         partyMax = totalPlayers
@@ -130,9 +132,19 @@ async function discordActivity() {
                     startTimestamp = Date.now()
                 }
                 details = (isSpectator ? "Spectating " : "Playing ") + (gameMode || "")
-                state = `\uD83C\uDFBC ${currentSongs}/${totalSongs} \uD83D\uDC65`
+                state = `\uD83C\uDFBC ${currentSongs}/${totalSongs} ` + (totalPlayers === 1 ? "" : "\uD83D\uDC65")
                 setPartyInfo()
                 break;
+        }
+    }
+
+    // Check party size here, shouldn't be necessary
+    if (partySize && partyMax){
+        if (partySize < 1 || partyMax < 1) {
+            // noinspection JSUnusedAssignment
+            console.log(`failed to set party size. partySize = ${partySize}, partyMax = ${partyMax}`)
+            partySize = null
+            partyMax = null
         }
     }
 
@@ -211,8 +223,12 @@ async function discordGatherInfo() {
 
                 lobbyIsPrivate = await requestFromGame("hostModal.$privateCheckbox.prop('checked')")
                 let _solo = await requestFromGame("hostModal.gameMode")
-                if (_solo === "Solo")
+                if (_solo === "Solo") {
                     lobbyIsPrivate = true
+                    totalPlayers = 1
+                    lobbyPassword = ""
+                    return
+                }
 
                 totalPlayers = await requestFromGame("hostModal.roomSizeSliderCombo.getValue()")
                 if (gameMode === "Ranked")
