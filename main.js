@@ -72,10 +72,6 @@ async function discordActivity() {
     let largeImageText = versionText
     let instance = false;
 
-    if (startTimestamp && currentView !== "Quiz") {
-        startTimestamp = null
-    }
-
     let state, smallImageKey, smallImageText, partyId, partySize, partyMax, joinSecret;
 
     let setPartyInfo = function () {
@@ -146,6 +142,10 @@ async function discordActivity() {
             partySize = null
             partyMax = null
         }
+    }
+
+    if (startTimestamp && currentView !== "Quiz") {
+        startTimestamp = null
     }
 
     // noinspection JSUnusedAssignment
