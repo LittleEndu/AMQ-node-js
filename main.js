@@ -121,8 +121,8 @@ async function discordActivity() {
                 setPartyInfo()
                 setupSecret()
                 break;
-            case "Battle Royale":
-                details = "Looting songs"
+            case "Battle Royal":
+                details = (isSpectator ? "Watching looting phase" : "Looting songs")
                 setPartyInfo()
                 break;
             case "Quiz":
@@ -174,17 +174,13 @@ async function discordGatherInfo() {
         if (_view) {
             let getGameMode = async function () {
                 gameMode = null;
-                if (await requestFromGame("lobby.settings.gameMode") === "Ranked") {
-                    gameMode = "Ranked"
-                    return;
-                }
-                if (await requestFromGame("quiz.gameMode") === "Ranked") {
+                if (await requestFromGame("hostModal.gameMode") === "Ranked") {
                     gameMode = "Ranked"
                     return;
                 }
 
-                let _scoreType = await requestFromGame("lobby.settings.scoreType")
-                let _showSelection = await requestFromGame("lobby.settings.showSelection")
+                let _scoreType = await requestFromGame("hostModal.$scoring.slider('getValue')")
+                let _showSelection = await requestFromGame("hostModal.$showSelection.slider('getValue')")
                 if (_showSelection === 2) {
                     gameMode = "Battle Royale"
                 } else {
@@ -203,23 +199,32 @@ async function discordGatherInfo() {
             }
 
 
-            let getLobbySettings = async function () {
-                lobbyIsPrivate = await requestFromGame("lobby.settings.privateRoom")
-                let _solo = await requestFromGame("lobby.settings.gameMode")
+            let getLobbySettings = async function (name = "lobby") {
+                isSpectator = await requestFromGame(`${name}.isSpectator`)
+                currentPlayers = await requestFromGame(`Object.keys(${name}.players).length`)
+
+                // This is a thing only in lobby anyway
+                // and since inviting can only happen in lobby then there should be no problem
+                //   if our game ID is invalid at any other point
+                lobbyId = await requestFromGame("lobby.gameId") || -1
+
+
+                lobbyIsPrivate = await requestFromGame("hostModal.$privateCheckbox.prop('checked')")
+                let _solo = await requestFromGame("hostModal.gameMode")
                 if (_solo === "Solo")
                     lobbyIsPrivate = true
 
-                totalPlayers = await requestFromGame("lobby.settings.roomSize")
+                totalPlayers = await requestFromGame("hostModal.roomSizeSliderCombo.getValue()")
                 if (gameMode === "Ranked")
                     totalPlayers = currentPlayers + 100 // game reports room size of 8
                 if (!totalPlayers)
                     totalPlayers = currentPlayers
-                lobbyId = await requestFromGame("lobby.gameId") || -1
-                lobbyPassword = await requestFromGame("lobby.settings.password") || ''
+
+                lobbyPassword = await requestFromGame("hostModal.$passwordInput.val()")
             }
 
 
-            // /([a-z])([A-Z])/g matches camelCase word endings, $1 $2 adds a space between the result
+            // /([a-z])([A-Z])/g matches camelCase word changes, $1 $2 adds a space between the result
             currentView = toTitleCase(_view.toString().replace(/([a-z])([A-Z])/g, '$1 $2'))
             avatarName = await requestFromGame("storeWindow.activeAvatar.avatarName")
             outfitName = await requestFromGame("storeWindow.activeAvatar.outfitName")
@@ -230,20 +235,21 @@ async function discordGatherInfo() {
                     animeName = await requestFromGame("expandLibrary.selectedSong.animeName")
                     typeName = await requestFromGame("expandLibrary.selectedSong.typeName")
                     break;
+                case "lobby":
+                    await getGameMode()
+                    await getLobbySettings()
+                    break;
+                case "battleRoyal":
+                    gameMode = "Battle Royale"
+                    await getLobbySettings('battleRoyal')
+                    break;
                 case "quiz":
                     await getGameMode()
                     currentSongs = await requestFromGame("quiz.infoContainer.$currentSongCount.text()")
                     totalSongs = await requestFromGame("quiz.infoContainer.$totalSongCount.text()")
-                    isSpectator = await requestFromGame("quiz.isSpectator")
-                    currentPlayers = await requestFromGame("Object.keys(quiz.players).length")
-                    await getLobbySettings()
+                    await getLobbySettings("quiz")
                     break;
-                case "lobby":
-                    await getGameMode()
-                    isSpectator = await requestFromGame("lobby.isSpectator")
-                    currentPlayers = await requestFromGame("Object.keys(lobby.players).length")
-                    await getLobbySettings()
-                    break;
+
             }
         } else {
             currentView = null;
