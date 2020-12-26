@@ -121,6 +121,10 @@ async function discordActivity() {
                 setPartyInfo()
                 setupSecret()
                 break;
+            case "Battle Royale":
+                details = "Looting songs"
+                setPartyInfo()
+                break;
             case "Quiz":
                 if (!startTimestamp) {
                     startTimestamp = Date.now()
