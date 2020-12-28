@@ -5,7 +5,7 @@ Local client for Anime Music Quiz that supports Discord rich presence
 This client is nothing more than an embedded web browser that also communicates with your local Discord client.
 AMQ vise, it doesn't give you any advantages. No new functionality nor new features are added, and will never be added.
 
-If your are instead concerned about this client being a virus, know that it isn't.
+If your are instead concerned about this client being a virus, know that [it isn't.](https://www.virustotal.com/gui/file/5521600246dec761efb8cf9d67fe9cff58d6718a4e21fec9b9628223e1226a9c/detection)
 
 ## Download
 Grab the latest release [from here](https://github.com/LittleEndu/AMQ-node-js/releases)
