@@ -6,6 +6,7 @@ const fs = require('fs');
 const folderSize = require('get-folder-size');
 const util = require('util')
 const crypto = require('crypto')
+const { v4: uuidv4 } = require('uuid');
 const discordRPC = require('discord-rpc')
 
 //main electron window
@@ -60,6 +61,7 @@ console.log = function (d) { //
     process.stdout.write(util.format(d) + '\n');
 };
 
+
 // user.js
 function loadAllUserscripts() {
     if (win && win.webContents) {
@@ -67,8 +69,13 @@ function loadAllUserscripts() {
         files.sort()
         files.forEach((file) => {
             console.log(`Executing code from ${file}`)
+            let codeToRun = fs.readFileSync(`${scriptFolder}/${file}`).toString()
+            if (file.endsWith('.user.js')){
+                let uuid = "uuid_" + (uuidv4().toString().replaceAll(`-`,''))
+                codeToRun = `let ${uuid} = () => {\n${codeToRun}\n}; ${uuid}()`
+            }
             try {
-                win.webContents.executeJavaScript(fs.readFileSync(`${scriptFolder}/${file}`).toString()).catch(console.log)
+                win.webContents.executeJavaScript(codeToRun).catch(console.log)
             } catch (err) {
                 console.log(err)
             }
