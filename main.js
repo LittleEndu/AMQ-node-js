@@ -6,7 +6,7 @@ const fs = require('fs');
 const folderSize = require('get-folder-size');
 const util = require('util')
 const crypto = require('crypto')
-const { v4: uuidv4 } = require('uuid');
+const {v4: uuidv4} = require('uuid');
 const discordRPC = require('discord-rpc')
 
 //main electron window
@@ -70,8 +70,8 @@ function loadAllUserscripts() {
         files.forEach((file) => {
             console.log(`Executing code from ${file}`)
             let codeToRun = fs.readFileSync(`${scriptFolder}/${file}`).toString()
-            if (file.endsWith('.user.js')){
-                let uuid = "uuid_" + (uuidv4().toString().replaceAll(`-`,''))
+            if (file.endsWith('.user.js')) {
+                let uuid = "uuid_" + (uuidv4().toString().replaceAll(`-`, ''))
                 codeToRun = `let ${uuid} = () => {\n${codeToRun}\n}; ${uuid}()`
             }
             try {
@@ -501,6 +501,7 @@ function startup() {
 
     win.webContents.on('new-window', (event, url) => {
         event.preventDefault()
+        console.log(`new-window: Opening ${url}`)
         open(url)
     })
 
@@ -525,8 +526,20 @@ function startup() {
     })
 
     win.webContents.session.on('will-download', (event, item) => {
-        event.preventDefault()
-        open(item.getURL())
+        if (item.getURL().startsWith("blob:")) {
+            console.log(`will-download: Saving ${item.getURL()} with filename ${item.getFilename()}`)
+            item.once('done', (_, state) => {
+                if (state === 'completed') {
+                    console.log(`${item.getFilename()} downloaded successfully`)
+                } else {
+                    console.log(`${item.getFilename()} download failed: ${state}`)
+                }
+            })
+        } else {
+            event.preventDefault()
+            console.log(`will-download: Opening ${item.getURL()}`)
+            open(item.getURL())
+        }
     })
     // endregion
 }
