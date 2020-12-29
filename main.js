@@ -21,14 +21,19 @@ function toTitleCase(str) {
     });
 }
 
-//logging
 if (!fs.existsSync(app.getPath('userData'))) {
     fs.mkdirSync(app.getPath('userData'));
 }
 const logFolder = app.getPath('userData') + '/logs'
-if (!fs.existsSync(logFolder)) {
-    fs.mkdirSync(logFolder);
-}
+const scriptFolder = app.getPath('userData') + '/scripts'
+const folders = [logFolder, scriptFolder]
+folders.forEach((folder) => {
+    if (!fs.existsSync(folder)) {
+        fs.mkdirSync(folder);
+    }
+})
+
+//logging
 const logFile = app.getPath('userData') + '/logs/' + Date.now() + '.log'
 fs.writeFileSync(logFile, "AMQ node.js log file\n")
 
@@ -40,7 +45,7 @@ while (
     })
     ) {
     let files = fs.readdirSync(logFolder)
-    fs.unlinkSync(logFolder + files[0])
+    fs.unlinkSync(`${logFolder}/${files[0]}`)
 }
 
 
@@ -54,6 +59,23 @@ console.log = function (d) { //
     logToFile(util.format(d));
     process.stdout.write(util.format(d) + '\n');
 };
+
+// user.js
+function loadAllUserscripts() {
+    if (win && win.webContents) {
+        let files = fs.readdirSync(scriptFolder)
+        files.sort()
+        files.forEach((file) => {
+            console.log(`Executing code from ${file}`)
+            try {
+                win.webContents.executeJavaScript(fs.readFileSync(`${scriptFolder}/${file}`).toString()).catch(console.log)
+            } catch (err) {
+                console.log(err)
+            }
+        })
+    }
+}
+
 
 // region Discord Rich Presence
 
@@ -135,7 +157,7 @@ async function discordActivity() {
     }
 
     // Check party size here, shouldn't be necessary
-    if (partySize && partyMax){
+    if (partySize && partyMax) {
         if (partySize < 1 || partyMax < 1) {
             // noinspection JSUnusedAssignment
             console.log(`failed to set party size. partySize = ${partySize}, partyMax = ${partyMax}`)
@@ -403,6 +425,14 @@ function startup() {
         },
         visible: false
     }))
+    menu.append(new MenuItem({
+        label: "Open Userdata Folder",
+        accelerator: "CommandOrControl+Shift+U",
+        click: () => {
+            open(app.getPath('userData'))
+        },
+        visible: false
+    }))
     // menu.append(new MenuItem({
     //     label: "Debug",
     //     accelerator: "F12",
@@ -456,6 +486,10 @@ function startup() {
             `Navigating to ${url}`
         )
         win.webContents.insertCSS('html, body { background-color: #424242; }').catch(console.log)
+    })
+
+    win.webContents.on('did-finish-load', () => {
+        loadAllUserscripts()
     })
 
     win.webContents.on('new-window', (event, url) => {
