@@ -63,12 +63,14 @@ console.log = function (d) { //
 
 
 // user.js
+let currentlyExecutingScript = ""
 function loadAllUserscripts() {
     if (win && win.webContents) {
         let files = fs.readdirSync(scriptFolder)
         files.sort()
         files.forEach((file) => {
             console.log(`Executing code from ${file}`)
+            currentlyExecutingScript = file
             let codeToRun = fs.readFileSync(`${scriptFolder}/${file}`).toString()
             if (file.endsWith('.user.js')) {
                 let uuid = "uuid_" + (uuidv4().toString().replaceAll(`-`, ''))
@@ -81,6 +83,7 @@ function loadAllUserscripts() {
             }
         })
     }
+    currentlyExecutingScript = ""
 }
 
 
@@ -521,8 +524,13 @@ function startup() {
 
     win.webContents.on('console-message', (event, level, message, line, sourceId) => {
         console.log(message)
-        if (line && sourceId)
-            console.log(`at line ${line} in ${sourceId}`)
+        if (line && sourceId) {
+            if (sourceId === win.webContents.getURL()) {
+                console.log(`at line ${line} when executing ${currentlyExecutingScript}`)
+            } else {
+                console.log(`at line ${line} in ${sourceId}`)
+            }
+        }
     })
 
     win.webContents.session.on('will-download', (event, item) => {
