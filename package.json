@@ -36,7 +36,10 @@
     "productName": "AMQ node.js",
     "copyright": "Copyright © 2020 LittleEndu",
     "win": {
-      "target": "portable",
+      "target": [
+        "nsis",
+        "portable"
+      ],
       "icon": "favicon.ico"
     }
   }
