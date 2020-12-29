@@ -64,6 +64,7 @@ console.log = function (d) { //
 
 // user.js
 let currentlyExecutingScript = ""
+
 function loadAllUserscripts() {
     if (win && win.webContents) {
         let files = fs.readdirSync(scriptFolder)
@@ -91,9 +92,19 @@ function loadAllUserscripts() {
 
 const clientId = '635944292275453973';
 discordRPC.register(clientId);
+
 let isRpcConnected = false;
 const rpc = new discordRPC.Client({transport: 'ipc'})
 // https://discord.com/developers/applications/635944292275453973/rich-presence/assets
+
+function clearDiscord() {
+    rpc._connectPromise = undefined;
+    // noinspection JSAccessibilityCheck
+    rpc._subscriptions = new Map();
+    rpc.removeAllListeners('connected')
+    // noinspection JSAccessibilityCheck
+    rpc.transport.removeAllListeners('close')
+}
 
 let currentView, gameMode, currentSongs, totalSongs, currentPlayers, totalPlayers, lobbyIsPrivate, isSpectator,
     songName, animeName, artistName, typeName, lobbyId, lobbyPassword, avatarName, outfitName, startTimestamp;
@@ -307,15 +318,17 @@ async function discordGatherInfo() {
 
     } else {
         try {
-            await rpc.login({clientId}); // this is safe to be called more than once
+            await rpc.login({clientId});
         } catch {
+            clearDiscord()
         }
     }
 }
 
 rpc.on('ready', () => {
+    console.log("Ready to discord")
     console.log(rpc.user)
-
+    isRpcConnected = true;
     rpc.subscribe('ACTIVITY_JOIN', function (args) {
         if (!currentView) {
             return; // TODO: this should save the secret until we are logged into AMQ
@@ -337,14 +350,11 @@ rpc.on('ready', () => {
     }).catch(console.log)
 });
 
-rpc.on('connected', () => {
-    console.log("Connected to discord")
-    isRpcConnected = true;
-})
 
 rpc.on('disconnected', () => {
+    isRpcConnected = false
     console.log("Disconnected from discord")
-    isRpcConnected = false;
+    clearDiscord()
 })
 
 
