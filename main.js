@@ -98,6 +98,8 @@ const rpc = new discordRPC.Client({transport: 'ipc'})
 // https://discord.com/developers/applications/635944292275453973/rich-presence/assets
 
 function clearDiscord() {
+    // devsnek says you should make a new client for each connection, but that seems too confusing
+    // this resets everything I use, except 'ready' and 'disconnected' listeners
     rpc._connectPromise = undefined;
     // noinspection JSAccessibilityCheck
     rpc._subscriptions = new Map();
