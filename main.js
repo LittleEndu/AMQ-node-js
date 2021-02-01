@@ -63,28 +63,29 @@ console.log = function (d) { //
 
 
 // user.js
-let currentlyExecutingScript = ""
-
 function loadAllUserscripts() {
     if (win && win.webContents) {
         let files = fs.readdirSync(scriptFolder)
         files.sort()
         files.forEach((file) => {
             console.log(`Executing code from ${file}`)
-            currentlyExecutingScript = file
             let codeToRun = fs.readFileSync(`${scriptFolder}/${file}`).toString()
             if (file.endsWith('.user.js')) {
                 let uuid = "uuid_" + (uuidv4().toString().replaceAll(`-`, ''))
-                codeToRun = `let ${uuid} = () => {\n${codeToRun}\n}; ${uuid}()`
+                codeToRun = `let ${uuid} = () => {${codeToRun}
+                }; 
+                try{${uuid}()}
+                catch (err) {
+                    console.log("Error when executing ${file}")
+                    console.error(err)
+                };`
             }
             try {
                 win.webContents.executeJavaScript(codeToRun).catch(console.log)
             } catch (err) {
-                console.log(err)
             }
         })
     }
-    currentlyExecutingScript = ""
 }
 
 
@@ -538,7 +539,7 @@ function startup() {
         console.log(message)
         if (line && sourceId) {
             if (sourceId === win.webContents.getURL()) {
-                console.log(`at line ${line} when executing ${currentlyExecutingScript}`)
+                console.log(`at line ${line} when executing an user script`)
             } else {
                 console.log(`at line ${line} in ${sourceId}`)
             }
