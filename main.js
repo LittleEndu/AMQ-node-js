@@ -456,14 +456,14 @@ function startup() {
         },
         visible: false
     }))
-    // menu.append(new MenuItem({
-    //     label: "Debug",
-    //     accelerator: "F12",
-    //     click: () => {
-    //         win.webContents.openDevTools()
-    //     },
-    //     visible: false
-    // }))
+    menu.append(new MenuItem({
+        label: "Debug",
+        accelerator: "F12",
+        click: () => {
+            win.webContents.openDevTools()
+        },
+        visible: false
+    }))
     // endregion
 
     win.setMenu(menu)
