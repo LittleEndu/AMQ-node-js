@@ -13,6 +13,30 @@ You want to use ``002. foo.user.js`` and ``010. bar.user.js`` when numbering scr
 If you do find any script that doesn't work, and you can't fix it yourself 
 then you can find me (LittleEndu#0001) on [AMQ discord](https://discord.gg/ZqTJeyV), you can DM me once you have joined.
 
+## Style support
+There is none. 
+Your best solution is to wrap whatever css you want to use in a function like the example below, 
+save it as a script and add it like you would some other userscript (instructions above). 
+Note that the ``addStyle`` function is copied from [Joseph's amqWindows.js](https://github.com/TheJoseph98/AMQ-Scripts/blob/1b363cc004b19ddc6a6b2d6df4c43c34f75d01b7/common/amqWindows.js#L369-L376) 
+and if some userscript you have requires that script, then you only need to copy from the ``addStyle`` part for your css to work.
+
+```js
+function addStyle(css) {
+    let head = document.head;
+    let style = document.createElement("style");
+    head.appendChild(style);
+    style.type = "text/css";
+    style.id = "customWindowStyle";
+    style.appendChild(document.createTextNode(css));
+}
+
+addStyle(`
+
+/* your css here */
+
+`)
+```
+
 ## Will I get into trouble if I use this client?
 This client is nothing more than an embedded web browser that also communicates with your local Discord client.
 AMQ vise, it doesn't give you any advantages. No new functionality nor new features are added, and will never be added.
