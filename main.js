@@ -7,6 +7,7 @@ const folderSize = require('get-folder-size');
 const util = require('util')
 const crypto = require('crypto')
 const {v4: uuidv4} = require('uuid');
+const fuzz = require('fuzzball');
 const discordRPC = require('discord-rpc')
 
 //main electron window
@@ -63,14 +64,34 @@ console.log = function (d) { //
 
 
 // user.js
+let missingRequirements = []
+
 function loadAllUserscripts() {
+    missingRequirements = []
     if (win && win.webContents) {
         let files = fs.readdirSync(scriptFolder)
         files.sort()
-        files.forEach((file) => {
+        files.forEach((file, index) => {
             console.log(`Executing code from ${file}`)
             let codeToRun = fs.readFileSync(`${scriptFolder}/${file}`).toString()
             if (file.endsWith('.user.js')) {
+                codeToRun.split('\n').some((line) => {
+                    if (line.startsWith('// @require')){
+                        let requirement = line.split('/').slice(-1)[0]
+                        let maximumRatio = 0
+                        files.slice(0, index).forEach((f) => {
+                            let ratio = fuzz.ratio(f, requirement)
+                            maximumRatio = ratio > maximumRatio ? ratio : maximumRatio
+                        })
+                        if (maximumRatio < 95){
+                            console.log(`Potentially missing requirement!!!
+${file} requires ${requirement} but nothing in your script folder matches the name`)
+                            missingRequirements.push(`${requirement} required by ${file}`)
+                        }
+                    }
+                    return line.startsWith('// ==/UserScript==')
+                })
+
                 let uuid = "uuid_" + (uuidv4().toString().replaceAll(`-`, ''))
                 codeToRun = `let ${uuid} = () => {${codeToRun}
                 }; 
@@ -81,7 +102,7 @@ function loadAllUserscripts() {
                 };`
             }
             try {
-                win.webContents.executeJavaScript(codeToRun).catch(console.log)
+                win.webContents.executeJavaScript(codeToRun).catch(err => {throw err})
             } catch (err) {
             }
         })
@@ -513,6 +534,13 @@ function startup() {
 
     win.webContents.on('did-finish-load', () => {
         loadAllUserscripts()
+        if (missingRequirements.length !== 0){
+            dialog.showMessageBoxSync(win, {
+                type: 'warning',
+                title: 'Missing requirement detected',
+                message: `The following scripts are required but might be missing:\n${missingRequirements.join(', ')}`
+            })
+        }
     })
 
     win.webContents.on('new-window', (event, url) => {
