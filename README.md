@@ -10,6 +10,16 @@ Just watch out, ``2. foo.user.js`` will be loaded after ``10. bar.user.js``.
 Windows Explorer will actually show these files in "correct" order and not in alphabetical one. 
 You want to use ``002. foo.user.js`` and ``010. bar.user.js`` when numbering scripts instead.
 
+### Missing requirement error
+When you get an warning about potentially missing requirements it could be caused by many things:
+
+* The erroring script loads before the script it requires
+  * Just order your scripts by adding ``!`` in-front of the required scripts
+* The required script has been renamed
+  * Rename the script back to what is expected. You can add characters to the name (for ordering purposes) but you can't have anything from the name
+* The required script is not downloaded
+  * Look at the erroring script in notepad or something, you need to download and add to your folder any script that's after // @require
+
 If you do find any script that doesn't work, and you can't fix it yourself 
 then you can find me (LittleEndu#0001) on [AMQ discord](https://discord.gg/ZqTJeyV), you can DM me once you have joined.
 
