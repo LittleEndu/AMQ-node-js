@@ -96,7 +96,7 @@ function loadAllUserscripts() {
                         }
                     })
                     if (maximumRatio < 95) {
-                        console.log(`Potentially missing requirement!!!\n${file} requires ${requirement} but nothing in your script folder matches the name`)
+                        console.log(`Missing requirement!!!\n${file} requires ${requirement} but nothing in your script folder matches the name`)
                         missingRequirements.push(`${requirement} required by ${file}`)
                     } else {
                         requirementsForTheCode.push(fs.readFileSync(`${scriptFolder}/${bestMatch}`).toString())
@@ -559,7 +559,7 @@ function startup() {
             dialog.showMessageBoxSync(win, {
                 type: 'warning',
                 title: 'Missing requirement detected',
-                message: `The following scripts are required but might be missing:\n${missingRequirements.join(', ')}`
+                message: `The following scripts are required but can't be found:\n${missingRequirements.join(', ')}`
             })
         }
     })
