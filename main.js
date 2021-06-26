@@ -39,13 +39,17 @@ folders.forEach((folder) => {
 const logFile = app.getPath('userData') + '/logs/' + Date.now() + '.log'
 fs.writeFileSync(logFile, "AMQ node.js log file\n")
 
-while (
+function getLoggingFolderSize() {
+    let rv = 0
     folderSize(logFolder, (err, size) => {
         if (err)
-            return false
-        return size > 2 ** 20 * 50
+            rv = 0
+        rv = size
     })
-    ) {
+    return rv
+}
+
+while (getLoggingFolderSize() > 2 ** 20 * 50) {
     let files = fs.readdirSync(logFolder)
     fs.unlinkSync(`${logFolder}/${files[0]}`)
 }
@@ -76,16 +80,15 @@ function loadAllUserscripts() {
             let codeToRun = fs.readFileSync(`${scriptFolder}/${file}`).toString()
             if (file.endsWith('.user.js')) {
                 codeToRun.split('\n').some((line) => {
-                    if (line.startsWith('// @require')){
+                    if (line.startsWith('// @require')) {
                         let requirement = line.split('/').slice(-1)[0]
                         let maximumRatio = 0
                         files.slice(0, index).forEach((f) => {
                             let ratio = fuzz.ratio(f, requirement)
                             maximumRatio = ratio > maximumRatio ? ratio : maximumRatio
                         })
-                        if (maximumRatio < 95){
-                            console.log(`Potentially missing requirement!!!
-${file} requires ${requirement} but nothing in your script folder matches the name`)
+                        if (maximumRatio < 95) {
+                            console.log(`Potentially missing requirement!!!\n${file} requires ${requirement} but nothing in your script folder matches the name`)
                             missingRequirements.push(`${requirement} required by ${file}`)
                         }
                     }
@@ -102,7 +105,9 @@ ${file} requires ${requirement} but nothing in your script folder matches the na
                 };`
             }
             try {
-                win.webContents.executeJavaScript(codeToRun).catch(err => {throw err})
+                win.webContents.executeJavaScript(codeToRun).catch(err => {
+                    throw err
+                })
             } catch (err) {
             }
         })
@@ -117,6 +122,7 @@ discordRPC.register(clientId);
 
 let isRpcConnected = false;
 const rpc = new discordRPC.Client({transport: 'ipc'})
+
 // https://discord.com/developers/applications/635944292275453973/rich-presence/assets
 
 function clearDiscord() {
@@ -534,7 +540,7 @@ function startup() {
 
     win.webContents.on('did-finish-load', () => {
         loadAllUserscripts()
-        if (missingRequirements.length !== 0){
+        if (missingRequirements.length !== 0) {
             dialog.showMessageBoxSync(win, {
                 type: 'warning',
                 title: 'Missing requirement detected',
