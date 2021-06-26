@@ -16,7 +16,7 @@ When you get an warning about potentially missing requirements it could be cause
 * The erroring script loads before the script it requires
   * Just order your scripts by adding ``!`` in-front of the required scripts
 * The required script has been renamed
-  * Rename the script back to what is expected. You can add characters to the name (for ordering purposes) but you can't have anything from the name
+  * Rename the script back to what is expected. You can add characters to the start and end of the name (for ordering purposes) but you can't have anything from the name be missing
 * The required script is not downloaded
   * Look at the erroring script in notepad or something, you need to download and add to your folder any script that's after // @require
 
