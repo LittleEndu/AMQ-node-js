@@ -31,7 +31,6 @@ function addStyle(css) {
     let style = document.createElement("style");
     head.appendChild(style);
     style.type = "text/css";
-    style.id = "customWindowStyle";
     style.appendChild(document.createTextNode(css));
 }
 
