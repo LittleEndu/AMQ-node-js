@@ -74,36 +74,51 @@ function loadAllUserscripts() {
     missingRequirements = []
     if (win && win.webContents) {
         let files = fs.readdirSync(scriptFolder)
-        files.sort()
-        files.forEach((file, index) => {
+        files.forEach((file) => {
+            if (!file.endsWith('.user.js')) {
+                return;
+            }
             console.log(`Executing code from ${file}`)
             let codeToRun = fs.readFileSync(`${scriptFolder}/${file}`).toString()
-            if (file.endsWith('.user.js')) {
-                codeToRun.split('\n').some((line) => {
-                    if (line.startsWith('// @require')) {
-                        let requirement = line.split('/').slice(-1)[0]
-                        let maximumRatio = 0
-                        files.slice(0, index).forEach((f) => {
-                            let ratio = fuzz.ratio(f, requirement)
-                            maximumRatio = ratio > maximumRatio ? ratio : maximumRatio
-                        })
-                        if (maximumRatio < 95) {
-                            console.log(`Potentially missing requirement!!!\n${file} requires ${requirement} but nothing in your script folder matches the name`)
-                            missingRequirements.push(`${requirement} required by ${file}`)
-                        }
-                    }
-                    return line.startsWith('// ==/UserScript==')
-                })
+            let requirementsForTheCode = []
 
-                let uuid = "uuid_" + (uuidv4().toString().replaceAll(`-`, ''))
-                codeToRun = `let ${uuid} = () => {${codeToRun}
-                }; 
-                try{${uuid}()}
-                catch (err) {
-                    console.log("Error when executing ${file}")
-                    console.error(err)
-                };`
-            }
+            // find the requirements
+            codeToRun.split('\n').forEach((line) => {
+                if (line.startsWith('// @require')) {
+                    let requirement = line.split('/').slice(-1)[0]
+                    let maximumRatio = 0
+                    let bestMatch = ""
+                    files.forEach((f) => {
+                        let ratio = fuzz.ratio(f, requirement)
+                        if (ratio > maximumRatio) {
+                            maximumRatio = ratio
+                            bestMatch = f
+                        }
+                    })
+                    if (maximumRatio < 95) {
+                        console.log(`Potentially missing requirement!!!\n${file} requires ${requirement} but nothing in your script folder matches the name`)
+                        missingRequirements.push(`${requirement} required by ${file}`)
+                    } else {
+                        requirementsForTheCode.push(fs.readFileSync(`${scriptFolder}/${bestMatch}`).toString())
+                    }
+                }
+            })
+
+            // construct the function
+            let uuid = "uuid_" + (uuidv4().toString().replaceAll(`-`, ''))
+            let requirementToRun = requirementsForTheCode.join('\n\n')
+            codeToRun = `let ${uuid} = () => {
+            ${requirementToRun}
+            \n
+            ${codeToRun}
+            }; 
+            try{${uuid}()}
+            catch (err) {
+                console.log("Error when executing ${file}")
+                console.error(err)
+            };`
+
+            // run the function
             try {
                 win.webContents.executeJavaScript(codeToRun).catch(err => {
                     throw err
