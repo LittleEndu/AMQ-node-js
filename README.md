@@ -22,19 +22,18 @@ then you can find me (LittleEndu#0001) on [AMQ discord](https://discord.gg/ZqTJe
 There is none. 
 Your best solution is to wrap whatever css you want to use in a function like the example below, 
 save it as a script and add it like you would some other userscript (instructions above). 
-Note that the ``addStyle`` function is copied from [Joseph's amqWindows.js](https://github.com/TheJoseph98/AMQ-Scripts/blob/1b363cc004b19ddc6a6b2d6df4c43c34f75d01b7/common/amqWindows.js#L369-L376) 
-and if some userscript you have requires that script, then you only need to copy from the ``addStyle`` part for your css to work.
+The ``AMQ_addStyle`` function is copied from [Joseph's amqScriptInfo.js](https://github.com/TheJoseph98/AMQ-Scripts/blob/0be15deb8fb5318bc6594c617e4889ff3ec72b71/common/amqScriptInfo.js#L90-L96).
 
 ```js
-function addStyle(css) {
-    let head = document.head;
-    let style = document.createElement("style");
-    head.appendChild(style);
-    style.type = "text/css";
-    style.appendChild(document.createTextNode(css));
+function AMQ_addStyle(css) {
+  let head = document.head;
+  let style = document.createElement("style");
+  head.appendChild(style);
+  style.type = "text/css";
+  style.appendChild(document.createTextNode(css));
 }
 
-addStyle(`
+AMQ_addStyle(`
 
 /* your css here */
 
