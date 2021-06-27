@@ -6,7 +6,7 @@ const fs = require('fs');
 const folderSize = require('get-folder-size');
 const util = require('util')
 const crypto = require('crypto')
-const {v4: uuidv4} = require('uuid');
+const {v4: uuid_v4} = require('uuid');
 const fuzz = require('fuzzball');
 const discordRPC = require('discord-rpc')
 
@@ -106,7 +106,7 @@ function loadAllUserscripts() {
             })
 
             // construct the function
-            let uuid = "uuid_" + (uuidv4().toString().replaceAll(`-`, ''))
+            let uuid = "uuid_" + (uuid_v4().toString().replaceAll(`-`, ''))
             let requirementToRun = requirementsForTheCode.join('\n\n')
             codeToRun = `
 let ${uuid} = () => {
@@ -149,7 +149,7 @@ function clearDiscord() {
     // noinspection JSAccessibilityCheck
     rpc._subscriptions = new Map();
     rpc.removeAllListeners('connected')
-    // noinspection JSAccessibilityCheck
+    // noinspection JSAccessibilityCheck,JSUnresolvedFunction
     rpc.transport.removeAllListeners('close')
 }
 
@@ -365,6 +365,7 @@ async function discordGatherInfo() {
 
     } else {
         try {
+            // noinspection JSCheckFunctionSignatures
             await rpc.login({clientId});
         } catch {
             clearDiscord()
@@ -566,10 +567,10 @@ function startup() {
         }
     })
 
-    win.webContents.on('new-window', (event, url) => {
-        event.preventDefault()
-        console.log(`new-window: Opening ${url}`)
-        open(url)
+    win.webContents.setWindowOpenHandler(details => {
+        console.log(`setWindowOpenHandler: Opening ${details.url}`)
+        open(details.url)
+        return {action: 'deny'}
     })
 
     win.webContents.on('will-prevent-unload', (event) => {
@@ -616,6 +617,7 @@ function startup() {
     // endregion
 }
 
+// noinspection JSCheckFunctionSignatures
 app.on('ready', startup)
 
 app.on('window-all-closed', () => {
