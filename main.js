@@ -108,16 +108,17 @@ function loadAllUserscripts() {
             // construct the function
             let uuid = "uuid_" + (uuidv4().toString().replaceAll(`-`, ''))
             let requirementToRun = requirementsForTheCode.join('\n\n')
-            codeToRun = `let ${uuid} = () => {
-            ${requirementToRun}
-            \n
-            ${codeToRun}
-            }; 
-            try{${uuid}()}
-            catch (err) {
-                console.log("Error when executing ${file}")
-                console.error(err)
-            };`
+            codeToRun = `
+let ${uuid} = () => {
+${requirementToRun}
+\n
+${codeToRun}
+}; 
+try{${uuid}()}
+catch (err) {
+    console.log("Error when executing ${file}")
+    console.error(err)
+};`
 
             // run the function
             try {
