@@ -83,6 +83,7 @@ function loadAllUserscripts() {
             let requirementsForTheCode = []
 
             // find the requirements
+            // TODO: if this script requires another userscript, the parent will be loaded twice
             codeToRun.split('\n').forEach((line) => {
                 if (line.startsWith('// @require')) {
                     let requirement = line.split('/').slice(-1)[0]
