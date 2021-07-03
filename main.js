@@ -23,6 +23,7 @@ function toTitleCase(str) {
     });
 }
 
+//create user data folder
 if (!fs.existsSync(app.getPath('userData'))) {
     fs.mkdirSync(app.getPath('userData'));
 }
@@ -216,10 +217,16 @@ function setupCurrentViewInfo() {
 
 async function setDiscordActivity() {
     details = "Not logged in";
-    largeImageKey = "logo"
-    largeImageText = versionText
+    state = undefined;
+    largeImageKey = "logo";
+    largeImageText = versionText;
+    smallImageKey = undefined;
+    smallImageText = undefined;
     instance = false;
-
+    partyId = undefined;
+    partySize = undefined;
+    partyMax = undefined;
+    joinSecret = undefined;
 
     if (currentView) {
         if (avatarName) {
@@ -265,6 +272,11 @@ async function setDiscordActivity() {
 async function findInfoForActivity() {
     let _view = await requestFromGame("viewChanger.currentView")
     if (_view) {
+        // /([a-z])([A-Z])/g matches camelCase word changes, $1 $2 adds a space between the result
+        currentView = toTitleCase(_view.toString().replace(/([a-z])([A-Z])/g, '$1 $2'))
+        avatarName = await requestFromGame("storeWindow.activeAvatar.avatarName")
+        outfitName = await requestFromGame("storeWindow.activeAvatar.outfitName")
+
         let getGameMode = async function () {
             gameMode = null;
             if (await requestFromGame("hostModal.gameMode") === "Ranked") {
@@ -320,11 +332,6 @@ async function findInfoForActivity() {
             lobbyPassword = await requestFromGame("hostModal.$passwordInput.val()")
         }
 
-
-        // /([a-z])([A-Z])/g matches camelCase word changes, $1 $2 adds a space between the result
-        currentView = toTitleCase(_view.toString().replace(/([a-z])([A-Z])/g, '$1 $2'))
-        avatarName = await requestFromGame("storeWindow.activeAvatar.avatarName")
-        outfitName = await requestFromGame("storeWindow.activeAvatar.outfitName")
         switch (_view) {
             case "expandLibrary":
                 songName = await requestFromGame("expandLibrary.selectedSong.name")
@@ -353,35 +360,30 @@ async function findInfoForActivity() {
     }
 }
 
+let useThisSecret = null
+
 async function createNewDiscordClient() {
     rpc = new discordRPC.Client({transport: 'ipc'})
     rpc.on('ready', () => {
         console.log("Ready to discord")
         console.log(rpc.user)
         isRpcConnected = true;
-        rpc.subscribe('ACTIVITY_JOIN', function (args) {
-            if (!currentView) {
-                return; // TODO: this should save the secret until we are logged into AMQ
-            }
-            let splitApart = args.secret.toString().split('.')
-            let roomId = splitApart[0]
-            if (roomId === '-1')
-                roomId = null;
-            let encodedPassword = splitApart[1]
-            requestFromGame(
-                `let decodedPassword = atob("${encodedPassword}"); roomBrowser.fireJoinLobby(${roomId}, decodedPassword)`
-            ).catch(console.log)
-        }).catch(console.log)
+        rpc.subscribe('ACTIVITY_JOIN').catch(console.log)
+        rpc.subscribe('ACTIVITY_JOIN_REQUEST').catch(console.log)
+    })
 
-        rpc.subscribe('ACTIVITY_JOIN_REQUEST', (args) => {
-            if (!lobbyIsPrivate) {
-                rpc.sendJoinInvite(args['user']['id']).catch(console.log)
-            } else {
-                // TODO: should request a modal in game somehow
-                rpc.closeJoinRequest(args['user']['id']).catch(console.log)
-            }
-        }).catch(console.log)
-    });
+    rpc.on('ACTIVITY_JOIN', (args) => {
+        useThisSecret = args.secret
+    })
+
+    rpc.on('ACTIVITY_JOIN_REQUEST', (args) => {
+        if (!lobbyIsPrivate) {
+            rpc.sendJoinInvite(args['user']['id']).catch(console.log)
+        } else {
+            // TODO: should request a modal in game somehow
+            rpc.closeJoinRequest(args['user']['id']).catch(console.log)
+        }
+    })
 
     rpc.on('disconnected', () => {
         isRpcConnected = false
@@ -402,6 +404,17 @@ async function discordCallback() {
     if (isRpcConnected) {
         await findInfoForActivity().catch(console.log);
         await setDiscordActivity().catch(console.log);
+        if (currentView && useThisSecret) {
+            let splitApart = useThisSecret.toString().split('.')
+            let roomId = splitApart[0]
+            if (roomId === '-1')
+                roomId = null;
+            let encodedPassword = splitApart[1]
+            requestFromGame(
+                `let decodedPassword = atob("${encodedPassword}"); roomBrowser.fireJoinLobby(${roomId}, decodedPassword)`
+            ).catch(console.log)
+            useThisSecret = null
+        }
     }
 }
 
