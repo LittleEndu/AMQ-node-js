@@ -9,6 +9,7 @@ const crypto = require('crypto')
 const {v4: uuid_v4} = require('uuid');
 const fuzz = require('fuzzball');
 const discordRPC = require('discord-rpc')
+const {discordAsker} = require('./discordAsker')
 
 //main electron window
 let win;
@@ -164,7 +165,7 @@ async function requestFromGame(toExecute) {
 }
 
 function setupPartyInfo() {
-    instance = true
+    //instance = true
     if (totalPlayers === 1)
         return
     partyId = lobbyId.toString() + crypto.createHash('sha1').update(lobbyPassword).digest('base64')
@@ -362,6 +363,30 @@ async function findInfoForActivity() {
 
 let useThisSecret = null
 
+async function addDiscordFunctionsToGame() {
+    if (win && win.webContents)
+        await win.webContents.executeJavaScript(discordAsker.toString().match(/function[^{]+{([\s\S]*)}$/)[1])
+}
+
+async function manageInvites() {
+    let invitedPeople = await requestFromGame('invitedPeople')
+    if (!invitedPeople) {
+        await addDiscordFunctionsToGame()
+        return
+    }
+    let rejectedPeople = await requestFromGame('rejectedPeople')
+
+    invitedPeople.forEach(person => {
+        rpc.sendJoinInvite(person)
+        requestFromGame(`inviteSent('${person}')`).then()
+    })
+
+    rejectedPeople.forEach(person => {
+        rpc.closeJoinRequest(person)
+        requestFromGame(`inviteSent('${person}')`).then()
+    })
+}
+
 async function createNewDiscordClient() {
     rpc = new discordRPC.Client({transport: 'ipc'})
     rpc.on('ready', () => {
@@ -380,8 +405,10 @@ async function createNewDiscordClient() {
         if (!lobbyIsPrivate) {
             rpc.sendJoinInvite(args['user']['id']).catch(console.log)
         } else {
-            // TODO: should request a modal in game somehow
-            rpc.closeJoinRequest(args['user']['id']).catch(console.log)
+            let name = `${args['user']['username']}#${args['user']['discriminator']}`
+            requestFromGame(
+                `addDiscordInviteMessage('${name}', '${args['user']['id']}', '${args['user']['avatar']}')`
+            )
         }
     })
 
@@ -397,6 +424,7 @@ async function createNewDiscordClient() {
     });
 }
 
+
 async function discordCallback() {
     if (rpc == null) {
         await createNewDiscordClient().catch();
@@ -404,17 +432,21 @@ async function discordCallback() {
     if (isRpcConnected) {
         await findInfoForActivity().catch(console.log);
         await setDiscordActivity().catch(console.log);
+
         if (currentView && useThisSecret) {
             let splitApart = useThisSecret.toString().split('.')
             let roomId = splitApart[0]
             if (roomId === '-1')
                 roomId = null;
             let encodedPassword = splitApart[1]
-            requestFromGame(
-                `let decodedPassword = atob("${encodedPassword}"); roomBrowser.fireJoinLobby(${roomId}, decodedPassword)`
-            ).catch(console.log)
+            await requestFromGame(
+                `let decodedPassword = atob("${encodedPassword}"); 
+                roomBrowser.fireJoinLobby(${roomId}, decodedPassword)`
+            )
             useThisSecret = null
         }
+
+        await manageInvites()
     }
 }
 
