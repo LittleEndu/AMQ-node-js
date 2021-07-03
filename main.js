@@ -134,126 +134,18 @@ catch (err) {
 
 // region Discord Rich Presence
 
+// https://discord.com/developers/applications/635944292275453973/rich-presence/assets
 const clientId = '635944292275453973';
 discordRPC.register(clientId);
 
 let isRpcConnected = false;
-const rpc = new discordRPC.Client({transport: 'ipc'})
+let rpc = null
 
-// https://discord.com/developers/applications/635944292275453973/rich-presence/assets
-
-function clearDiscord() {
-    // devsnek says you should make a new client for each connection, but that seems too confusing
-    // this resets everything I use, except 'ready' and 'disconnected' listeners
-    rpc._connectPromise = undefined;
-    // noinspection JSAccessibilityCheck
-    rpc._subscriptions = new Map();
-    rpc.removeAllListeners('connected')
-    // noinspection JSAccessibilityCheck,JSUnresolvedFunction
-    rpc.transport.removeAllListeners('close')
-}
 
 let currentView, gameMode, currentSongs, totalSongs, currentPlayers, totalPlayers, lobbyIsPrivate, isSpectator,
-    songName, animeName, artistName, typeName, lobbyId, lobbyPassword, avatarName, outfitName, startTimestamp;
-
-async function discordActivity() {
-    let details = "Not logged in";
-    let largeImageKey = "logo"
-    let largeImageText = versionText
-    let instance = false;
-
-    let state, smallImageKey, smallImageText, partyId, partySize, partyMax, joinSecret;
-
-    let setPartyInfo = function () {
-        instance = true
-        if (totalPlayers === 1)
-            return
-        partyId = lobbyId.toString() + crypto.createHash('sha1').update(lobbyPassword).digest('base64')
-        partySize = currentPlayers
-        partyMax = totalPlayers
-    }
-
-    let setupSecret = function () {
-        if (totalPlayers - currentPlayers > 0) {
-            let base64password = Buffer.from(lobbyPassword).toString('base64')
-            joinSecret = `${lobbyId}.${base64password}`
-        }
-    }
-
-
-    if (currentView) {
-        if (avatarName) {
-            largeImageKey = `${avatarName}_${outfitName}`
-                .replace(' ', '_')
-                .toLowerCase()
-            largeImageText = avatarName
-            smallImageKey = "logo"
-            smallImageText = versionText
-        }
-        switch (currentView) {
-            default:
-                details = `In ${currentView}`
-                break;
-            case "Room Browser":
-                details = "Browsing rooms"
-                break;
-            case "Expand Library":
-                details = "Expanding Library"
-                if (songName) {
-                    state = `Checking out '${songName}' by '${artistName}' from '${animeName}' [${typeName}]`
-                }
-                break;
-            case "Lobby":
-                details = (isSpectator ? "Waiting to Spectate " : "Waiting to Play ") + (gameMode || "")
-                state = gameMode === "Ranked" ? "Ranked Lobby" : lobbyIsPrivate ? "Private Lobby" : "Public Lobby"
-                setPartyInfo()
-                setupSecret()
-                break;
-            case "Battle Royal":
-                details = (isSpectator ? "Watching looting phase" : "Looting songs")
-                setPartyInfo()
-                break;
-            case "Quiz":
-                if (!startTimestamp) {
-                    startTimestamp = Date.now()
-                }
-                details = (isSpectator ? "Spectating " : "Playing ") + (gameMode || "")
-                state = `\uD83C\uDFBC ${currentSongs}/${totalSongs} ` + (totalPlayers === 1 ? "" : "\uD83D\uDC65")
-                setPartyInfo()
-                break;
-        }
-    }
-
-    // Check party size here, shouldn't be necessary
-    if (partySize && partyMax) {
-        if (partySize < 1 || partyMax < 1) {
-            // noinspection JSUnusedAssignment
-            console.log(`failed to set party size. partySize = ${partySize}, partyMax = ${partyMax}`)
-            partySize = null
-            partyMax = null
-        }
-    }
-
-    if (startTimestamp && currentView !== "Quiz") {
-        startTimestamp = null
-    }
-
-    // noinspection JSUnusedAssignment
-    await rpc.setActivity({
-        details,
-        state,
-        startTimestamp,
-        largeImageKey,
-        largeImageText,
-        smallImageKey,
-        smallImageText,
-        instance,
-        partyId,
-        partySize,
-        partyMax,
-        joinSecret
-    });
-}
+    songName, animeName, artistName, typeName, lobbyId, lobbyPassword, avatarName, outfitName, startTimestamp,
+    details, largeImageKey, largeImageText, state, smallImageKey, smallImageText, partyId, partySize, partyMax,
+    joinSecret, instance;
 
 async function requestFromGame(toExecute) {
     if (win && win.webContents) {
@@ -270,141 +162,250 @@ async function requestFromGame(toExecute) {
     }
 }
 
-async function discordGatherInfo() {
-    if (isRpcConnected) {
-        let _view = await requestFromGame("viewChanger.currentView")
-        if (_view) {
-            let getGameMode = async function () {
-                gameMode = null;
-                if (await requestFromGame("hostModal.gameMode") === "Ranked") {
-                    gameMode = "Ranked"
-                    return;
-                }
+function setupPartyInfo() {
+    instance = true
+    if (totalPlayers === 1)
+        return
+    partyId = lobbyId.toString() + crypto.createHash('sha1').update(lobbyPassword).digest('base64')
+    partySize = currentPlayers
+    partyMax = totalPlayers
+}
 
-                let _scoreType = await requestFromGame("hostModal.$scoring.slider('getValue')")
-                let _showSelection = await requestFromGame("hostModal.$showSelection.slider('getValue')")
-                if (_showSelection === 2) {
-                    gameMode = "Battle Royale"
-                } else {
-                    switch (_scoreType) {
-                        case 1:
-                            gameMode = "Standard"
-                            break;
-                        case 2:
-                            gameMode = "Quick Draw"
-                            break;
-                        case 3:
-                            gameMode = "Last Man Standing"
-                            break;
-                    }
-                }
-            }
-
-
-            let getLobbySettings = async function (name = "lobby") {
-                isSpectator = await requestFromGame(`${name}.isSpectator`)
-                currentPlayers = await requestFromGame(`Object.keys(${name}.players).length`)
-
-                // This is a thing only in lobby anyway
-                // and since inviting can only happen in lobby then there should be no problem
-                //   if our game ID is invalid at any other point
-                lobbyId = await requestFromGame("lobby.gameId") || -1
-
-
-                lobbyIsPrivate = await requestFromGame("hostModal.$privateCheckbox.prop('checked')")
-                let _solo = await requestFromGame("hostModal.gameMode")
-                if (_solo === "Solo") {
-                    lobbyIsPrivate = true
-                    totalPlayers = 1
-                    lobbyPassword = ""
-                    return
-                }
-
-                totalPlayers = await requestFromGame("hostModal.roomSizeSliderCombo.getValue()")
-                if (gameMode === "Ranked")
-                    totalPlayers = currentPlayers + 100 // game reports room size of 8
-                if (!totalPlayers)
-                    totalPlayers = currentPlayers
-
-                lobbyPassword = await requestFromGame("hostModal.$passwordInput.val()")
-            }
-
-
-            // /([a-z])([A-Z])/g matches camelCase word changes, $1 $2 adds a space between the result
-            currentView = toTitleCase(_view.toString().replace(/([a-z])([A-Z])/g, '$1 $2'))
-            avatarName = await requestFromGame("storeWindow.activeAvatar.avatarName")
-            outfitName = await requestFromGame("storeWindow.activeAvatar.outfitName")
-            switch (_view) {
-                case "expandLibrary":
-                    songName = await requestFromGame("expandLibrary.selectedSong.name")
-                    artistName = await requestFromGame("expandLibrary.selectedSong.artist")
-                    animeName = await requestFromGame("expandLibrary.selectedSong.animeName")
-                    typeName = await requestFromGame("expandLibrary.selectedSong.typeName")
-                    break;
-                case "lobby":
-                    await getGameMode()
-                    await getLobbySettings()
-                    break;
-                case "battleRoyal":
-                    gameMode = "Battle Royale"
-                    await getLobbySettings('battleRoyal')
-                    break;
-                case "quiz":
-                    await getGameMode()
-                    currentSongs = await requestFromGame("quiz.infoContainer.$currentSongCount.text()")
-                    totalSongs = await requestFromGame("quiz.infoContainer.$totalSongCount.text()")
-                    await getLobbySettings("quiz")
-                    break;
-
-            }
-        } else {
-            currentView = null;
-        }
-
-        await discordActivity().catch(console.log);
-
-    } else {
-        try {
-            // noinspection JSCheckFunctionSignatures
-            await rpc.login({clientId});
-        } catch {
-            clearDiscord()
-        }
+function setupSecret() {
+    if (totalPlayers - currentPlayers > 0) {
+        let base64password = Buffer.from(lobbyPassword).toString('base64')
+        joinSecret = `${lobbyId}.${base64password}`
     }
 }
 
-rpc.on('ready', () => {
-    console.log("Ready to discord")
-    console.log(rpc.user)
-    isRpcConnected = true;
-    rpc.subscribe('ACTIVITY_JOIN', function (args) {
-        if (!currentView) {
-            return; // TODO: this should save the secret until we are logged into AMQ
+// noinspection OverlyComplexFunctionJS, because it's just a big switch statement
+function setupCurrentViewInfo() {
+    switch (currentView) {
+        case "Room Browser":
+            details = "Browsing rooms"
+            break;
+        case "Expand Library":
+            details = "Expanding Library"
+            if (songName) {
+                state = `Checking out '${songName}' by '${artistName}' from '${animeName}' [${typeName}]`
+            }
+            break;
+        case "Lobby":
+            details = (isSpectator ? "Waiting to Spectate " : "Waiting to Play ") + (gameMode || "")
+            state = gameMode === "Ranked" ? "Ranked Lobby" : lobbyIsPrivate ? "Private Lobby" : "Public Lobby"
+            setupPartyInfo()
+            setupSecret()
+            break;
+        case "Battle Royal":
+            details = (isSpectator ? "Watching looting phase" : "Looting songs")
+            setupPartyInfo()
+            break;
+        case "Quiz":
+            if (!startTimestamp) {
+                startTimestamp = Date.now()
+            }
+            details = (isSpectator ? "Spectating " : "Playing ") + (gameMode || "")
+            state = `\uD83C\uDFBC ${currentSongs}/${totalSongs} ` + (totalPlayers === 1 ? "" : "\uD83D\uDC65")
+            setupPartyInfo()
+            break;
+        default:
+            details = `In ${currentView}`
+            break;
+    }
+}
+
+async function setDiscordActivity() {
+    details = "Not logged in";
+    largeImageKey = "logo"
+    largeImageText = versionText
+    instance = false;
+
+
+    if (currentView) {
+        if (avatarName) {
+            largeImageKey = `${avatarName}_${outfitName}`.replace(' ', '_').toLowerCase()
+            largeImageText = avatarName
+            smallImageKey = "logo"
+            smallImageText = versionText
         }
-        let splitApart = args.secret.toString().split('.')
-        let roomId = splitApart[0]
-        if (roomId === '-1')
-            roomId = null;
-        let encodedPassword = splitApart[1]
-        requestFromGame(
-            `let decodedPassword = atob("${encodedPassword}"); roomBrowser.fireJoinLobby(${roomId}, decodedPassword)`
-        ).catch(console.log)
-    }).catch(console.log)
+        setupCurrentViewInfo();
+    }
 
-    rpc.subscribe('ACTIVITY_JOIN_REQUEST', (args) => {
-        if (!lobbyIsPrivate) {
-            rpc.sendJoinInvite(args['user']['id']).catch(console.log)
+    // Check party size here, shouldn't be necessary
+    if (partySize && partyMax) {
+        if (partySize < 1 || partyMax < 1) {
+            console.log(`failed to set party size. partySize = ${partySize}, partyMax = ${partyMax}`)
+            partySize = null
+            partyMax = null
         }
-    }).catch(console.log)
-});
+    }
+
+    // Reset startTimestamp if not in quiz
+    if (startTimestamp && currentView !== "Quiz") {
+        startTimestamp = null
+    }
+
+    await rpc.setActivity({
+        details,
+        state,
+        startTimestamp,
+        largeImageKey,
+        largeImageText,
+        smallImageKey,
+        smallImageText,
+        instance,
+        partyId,
+        partySize,
+        partyMax,
+        joinSecret
+    });
+}
 
 
-rpc.on('disconnected', () => {
-    isRpcConnected = false
-    console.log("Disconnected from discord")
-    clearDiscord()
-})
+async function findInfoForActivity() {
+    let _view = await requestFromGame("viewChanger.currentView")
+    if (_view) {
+        let getGameMode = async function () {
+            gameMode = null;
+            if (await requestFromGame("hostModal.gameMode") === "Ranked") {
+                gameMode = "Ranked"
+                return;
+            }
 
+            let _scoreType = await requestFromGame("hostModal.$scoring.slider('getValue')")
+            let _showSelection = await requestFromGame("hostModal.$showSelection.slider('getValue')")
+            if (_showSelection === 2) {
+                gameMode = "Battle Royale"
+            } else {
+                switch (_scoreType) {
+                    case 1:
+                        gameMode = "Standard"
+                        break;
+                    case 2:
+                        gameMode = "Quick Draw"
+                        break;
+                    case 3:
+                        gameMode = "Last Man Standing"
+                        break;
+                }
+            }
+        }
+
+
+        let getLobbySettings = async function (name = "lobby") {
+            isSpectator = await requestFromGame(`${name}.isSpectator`)
+            currentPlayers = await requestFromGame(`Object.keys(${name}.players).length`)
+
+            // This is a thing only in lobby anyway
+            // and since inviting can only happen in lobby then there should be no problem
+            //   if our game ID is invalid at any other point
+            lobbyId = await requestFromGame("lobby.gameId") || -1
+
+
+            lobbyIsPrivate = await requestFromGame("hostModal.$privateCheckbox.prop('checked')")
+            let _solo = await requestFromGame("hostModal.gameMode")
+            if (_solo === "Solo") {
+                lobbyIsPrivate = true
+                totalPlayers = 1
+                lobbyPassword = ""
+                return
+            }
+
+            totalPlayers = await requestFromGame("hostModal.roomSizeSliderCombo.getValue()")
+            if (gameMode === "Ranked")
+                totalPlayers = currentPlayers + 100 // game reports room size of 8
+            if (!totalPlayers)
+                totalPlayers = currentPlayers
+
+            lobbyPassword = await requestFromGame("hostModal.$passwordInput.val()")
+        }
+
+
+        // /([a-z])([A-Z])/g matches camelCase word changes, $1 $2 adds a space between the result
+        currentView = toTitleCase(_view.toString().replace(/([a-z])([A-Z])/g, '$1 $2'))
+        avatarName = await requestFromGame("storeWindow.activeAvatar.avatarName")
+        outfitName = await requestFromGame("storeWindow.activeAvatar.outfitName")
+        switch (_view) {
+            case "expandLibrary":
+                songName = await requestFromGame("expandLibrary.selectedSong.name")
+                artistName = await requestFromGame("expandLibrary.selectedSong.artist")
+                animeName = await requestFromGame("expandLibrary.selectedSong.animeName")
+                typeName = await requestFromGame("expandLibrary.selectedSong.typeName")
+                break;
+            case "lobby":
+                await getGameMode()
+                await getLobbySettings()
+                break;
+            case "battleRoyal":
+                gameMode = "Battle Royale"
+                await getLobbySettings('battleRoyal')
+                break;
+            case "quiz":
+                await getGameMode()
+                currentSongs = await requestFromGame("quiz.infoContainer.$currentSongCount.text()")
+                totalSongs = await requestFromGame("quiz.infoContainer.$totalSongCount.text()")
+                await getLobbySettings("quiz")
+                break;
+
+        }
+    } else {
+        currentView = null;
+    }
+}
+
+async function createNewDiscordClient() {
+    rpc = new discordRPC.Client({transport: 'ipc'})
+    rpc.on('ready', () => {
+        console.log("Ready to discord")
+        console.log(rpc.user)
+        isRpcConnected = true;
+        rpc.subscribe('ACTIVITY_JOIN', function (args) {
+            if (!currentView) {
+                return; // TODO: this should save the secret until we are logged into AMQ
+            }
+            let splitApart = args.secret.toString().split('.')
+            let roomId = splitApart[0]
+            if (roomId === '-1')
+                roomId = null;
+            let encodedPassword = splitApart[1]
+            requestFromGame(
+                `let decodedPassword = atob("${encodedPassword}"); roomBrowser.fireJoinLobby(${roomId}, decodedPassword)`
+            ).catch(console.log)
+        }).catch(console.log)
+
+        rpc.subscribe('ACTIVITY_JOIN_REQUEST', (args) => {
+            if (!lobbyIsPrivate) {
+                rpc.sendJoinInvite(args['user']['id']).catch(console.log)
+            } else {
+                // TODO: should request a modal in game somehow
+                rpc.closeJoinRequest(args['user']['id']).catch(console.log)
+            }
+        }).catch(console.log)
+    });
+
+    rpc.on('disconnected', () => {
+        isRpcConnected = false
+        console.log("Disconnected from discord")
+        rpc = null
+    })
+
+    await rpc.login({clientId}).catch((err) => {
+        rpc = null;
+        throw err
+    });
+}
+
+async function discordCallback() {
+    if (rpc == null) {
+        await createNewDiscordClient().catch();
+    }
+    if (isRpcConnected) {
+        await findInfoForActivity().catch(console.log);
+        await setDiscordActivity().catch(console.log);
+    }
+}
+
+// endregion
 
 //set up for AMQ and other ux
 function startup() {
@@ -537,7 +538,7 @@ function startup() {
                 console.log("You are up to date.");
             }
         })
-        setInterval(discordGatherInfo, 1_000);
+        setInterval(discordCallback, 1_000);
     }).catch(console.log)
 
 
