@@ -1,4 +1,10 @@
 const {app, BrowserWindow, Menu, MenuItem, dialog} = require('electron')
+
+if (!app.requestSingleInstanceLock()) {
+    app.quit()
+    process.exit(0) // So no errors or flashing occurs
+}
+
 const windowStateKeeper = require('electron-window-state');
 const versionCheck = require('github-version-checker');
 const open = require('open')
@@ -67,6 +73,8 @@ console.log = function (d) { //
     logToFile(util.format(d));
     process.stdout.write(util.format(d) + '\n');
 };
+
+console.log(`These arguments were used to start the app:\n${process.argv}`)
 
 
 // user.js
@@ -165,10 +173,10 @@ async function requestFromGame(toExecute) {
 }
 
 function setupPartyInfo() {
-    //instance = true
     if (totalPlayers === 1)
         return
     partyId = lobbyId.toString() + crypto.createHash('sha1').update(lobbyPassword).digest('base64')
+
     partySize = currentPlayers
     partyMax = totalPlayers
 }
@@ -176,7 +184,8 @@ function setupPartyInfo() {
 function setupSecret() {
     if (totalPlayers - currentPlayers > 0) {
         let base64password = Buffer.from(lobbyPassword).toString('base64')
-        joinSecret = `${lobbyId}.${base64password}`
+        // TODO: allow people to join as spectator
+        joinSecret = `${lobbyId}.${base64password}.${instance*1}`
     }
 }
 
@@ -201,6 +210,8 @@ function setupCurrentViewInfo() {
         case "Battle Royal":
             details = (isSpectator ? "Watching looting phase" : "Looting songs")
             setupPartyInfo()
+            instance = true;
+            setupSecret()
             break;
         case "Quiz":
             if (!startTimestamp) {
@@ -209,6 +220,8 @@ function setupCurrentViewInfo() {
             details = (isSpectator ? "Spectating " : "Playing ") + (gameMode || "")
             state = `\uD83C\uDFBC ${currentSongs}/${totalSongs} ` + (totalPlayers === 1 ? "" : "\uD83D\uDC65")
             setupPartyInfo()
+            instance = true;
+            setupSecret()
             break;
         default:
             details = `In ${currentView}`
@@ -223,7 +236,7 @@ async function setDiscordActivity() {
     largeImageText = versionText;
     smallImageKey = undefined;
     smallImageText = undefined;
-    instance = false;
+    instance = false; // From RPC SDK docs: (for future use) integer representing a boolean for if the player is in an instance (an in-progress match)
     partyId = undefined;
     partySize = undefined;
     partyMax = undefined;
@@ -439,9 +452,10 @@ async function discordCallback() {
             if (roomId === '-1')
                 roomId = null;
             let encodedPassword = splitApart[1]
+            let commandToUse = splitApart[2] === '0' ? 'fireJoinLobby' : 'fireSpectateGame'
             await requestFromGame(
                 `let decodedPassword = atob("${encodedPassword}"); 
-                roomBrowser.fireJoinLobby(${roomId}, decodedPassword)`
+                roomBrowser.${commandToUse}(${roomId}, decodedPassword)`
             )
             useThisSecret = null
         }
@@ -454,6 +468,9 @@ async function discordCallback() {
 
 //set up for AMQ and other ux
 function startup() {
+    app.setAsDefaultProtocolClient('animemusicquiz')
+    // TODO: see if discord has implemented using secret and buttons at the same time, then implement only-in-game invites
+
     let winState = windowStateKeeper({
         defaultWidth: 800,
         defaultHeight: 600
@@ -676,5 +693,13 @@ app.on('activate', () => {
     if (win === null) {
         startup()
     }
+})
+
+app.on('second-instance', (event, argv, _) => {
+    console.log(`Second instance called with:\n${argv}`)
+    // TODO: implement only-in-game invites here
+    if (win.isMinimized())
+        win.restore()
+    win.focus()
 })
 

@@ -13,8 +13,10 @@ function discordAsker() {
 
         pendingInvites.push(discordUserId)
         let avatarUrl;
-
-        if (discordAvatarSecret.startsWith('a_')) {
+        if (!discordAvatarSecret){
+            avatarUrl = "https://discord.com/assets/1f0bfc0865d324c2587920a7d80c609b.png"
+        }
+        else if (discordAvatarSecret.startsWith('a_')) {
             avatarUrl = `https://cdn.discordapp.com/avatars/${discordUserId}/${discordAvatarSecret}.gif?size=32`
         } else {
             avatarUrl = `https://cdn.discordapp.com/avatars/${discordUserId}/${discordAvatarSecret}.png?size=32`
@@ -24,9 +26,9 @@ function discordAsker() {
         let $li = $('<li>' +
             '<img class="amqEmoji" src="https://animemusicquiz.com/img/ui/discord.png" sizes="28px" alt="discord"> ' +
             `<img class="amqEmoji" src="${avatarUrl}" sizes="28px" alt="avatar"> ` +
-            `<b>${discordUserNameDiscrim}</b> wants to join this game!\n` +
-            `<a href="JavaScript:void(0);" onclick="acceptInvite('${discordUserId}')">Invite to game!</a>\n` +
-            `<a href="JavaScript:void(0);" onclick="rejectInvite('${discordUserId}')">Reject the invite!</a>` +
+            `<b>${discordUserNameDiscrim}</b> wants to join this game!` +
+            `<br><a href="JavaScript:void(0);" onclick="acceptInvite('${discordUserId}')">Invite to game!</a>` +
+            `<br><a href="JavaScript:void(0);" onclick="rejectInvite('${discordUserId}')">Reject the invite!</a>` +
             '</li>')
         $chatMessageContainer.append($li)
 
